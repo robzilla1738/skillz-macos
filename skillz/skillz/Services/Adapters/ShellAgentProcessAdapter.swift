@@ -1,6 +1,6 @@
 import Foundation
 
-enum ShellAgentProcessAdapter {
+nonisolated enum ShellAgentProcessAdapter {
     static func scan() -> [AgentSession] {
         processRows().compactMap(session(from:))
     }
@@ -76,7 +76,7 @@ enum ShellAgentProcessAdapter {
     }
 }
 
-private struct ProcessRow {
+nonisolated private struct ProcessRow {
     let pid: Int
     let parentPID: Int
     let command: String
