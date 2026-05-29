@@ -186,7 +186,8 @@ struct skillzTests {
 
         let summary = AgentActivityEngine.summary(for: sessions)
         #expect(summary.hasNotchAttention)
-        #expect(summary.notchDisplaySessions.map(\.id) == ["claude-stopped", "codex-input"])
+        #expect(summary.notchAttentionSessions.map(\.id) == ["claude-stopped", "codex-input"])
+        #expect(summary.notchDisplaySessions.map(\.id) == ["cursor-working", "claude-stopped", "codex-input"])
 
         let workingSummary = AgentActivityEngine.summary(for: [sessions[0]])
         #expect(!workingSummary.hasNotchAttention)
