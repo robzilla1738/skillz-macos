@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Skillz — direct-download distribution entitlements.
+
+  Release checklist:
+  1. Developer ID signing (Automatic with DEVELOPMENT_TEAM)
+  2. xcodebuild -scheme skillz -configuration Release archive
+  3. notarytool submit + staple the .app
+  4. Smoke test on a Mac without agent folders, then install Cursor and confirm rescan
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<false/>
+</dict>
+</plist>

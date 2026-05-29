@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    name: Debug Build and Unit Tests
+    runs-on: macos-26
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: |
+          if [ -d /Applications/Xcode_26.3.app ]; then
+            sudo xcode-select -s /Applications/Xcode_26.3.app
+          fi
+          xcodebuild -version
+
+      - name: Build
+        working-directory: skillz
+        run: xcodebuild -scheme skillz -destination 'platform=macOS' build
+
+      - name: Unit Tests
+        working-directory: skillz
+        run: xcodebuild -scheme skillz -destination 'platform=macOS' -only-testing:skillzTests test
