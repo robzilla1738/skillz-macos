@@ -67,14 +67,6 @@ struct ItemListView: View {
             .padding(.vertical, SkillzSpacing.md)
             .background(Color.skillzCanvas)
         }
-        .toolbar {
-            ToolbarItem(placement: .automatic) {
-                SkillzGlassSearchField(
-                    text: $store.searchText,
-                    prompt: "Search skills, MCPs, plugins"
-                )
-            }
-        }
     }
 
     private var isGlobalEmpty: Bool {

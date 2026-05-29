@@ -163,6 +163,7 @@ struct AgentNotchOpenView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(NotchRowButtonStyle())
+        .help("Open session")
         .accessibilityLabel("\(session.platform.displayName), \(subtitle(for: session)), \(session.state.displayName)")
     }
 

@@ -123,10 +123,16 @@ final class NotchWindowController: NSWindowController {
     }
 
     private func reveal(_ session: AgentSession) {
+        if AgentSessionActivator.activateOwningApp(for: session) {
+            return
+        }
+
         if let cwd = session.cwd {
             let url = URL(fileURLWithPath: cwd, isDirectory: true)
             NSWorkspace.shared.activateFileViewerSelecting([url])
+            return
         }
+
         activateMainApp()
     }
 

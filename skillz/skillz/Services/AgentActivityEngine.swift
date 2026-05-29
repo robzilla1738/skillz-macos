@@ -41,6 +41,7 @@ enum AgentActivityEngine {
             ClaudeSessionAdapter.scan()
             + CodexSessionAdapter.scan()
             + CursorSessionAdapter.scan()
+            + ShellAgentProcessAdapter.scan()
         return merge(hookSessions: hookSessions, fileSessions: fileSessions, now: now)
     }
 
@@ -77,6 +78,11 @@ enum AgentActivityEngine {
 
         if session.state == .needsInput,
            now.timeIntervalSince(session.updatedAt) > AgentPaths.staleNeedsInputInterval {
+            updated.state = .unknown
+        }
+
+        if session.state == .idle,
+           now.timeIntervalSince(session.updatedAt) > AgentPaths.staleIdleInterval {
             updated.state = .unknown
         }
 
@@ -124,18 +130,16 @@ struct AgentActivitySummary: Equatable, Sendable {
     }
 
     var notchAttentionSessions: [AgentSession] {
-        AgentPlatform.trackedAgentPlatforms.compactMap { platform in
-            bestSession(for: platform)
-        }
-        .filter { $0.state == .needsInput || $0.state == .idle }
+        sessions.filter { $0.state == .needsInput || $0.state == .idle }
     }
 
     var notchDisplaySessions: [AgentSession] {
-        let attention = notchAttentionSessions
-        if !attention.isEmpty { return attention }
-        return AgentPlatform.trackedAgentPlatforms.compactMap { platform in
-            bestSession(for: platform)
-        }
+        sessions.filter { $0.state == .needsInput || $0.state == .idle || $0.state == .working }
+    }
+
+    var notchClosedSessions: [AgentSession] {
+        let active = sessions.filter { $0.state == .working || $0.state == .needsInput }
+        return active.isEmpty ? sessions.filter { $0.state == .idle } : active
     }
 
     var hasNotchAttention: Bool {

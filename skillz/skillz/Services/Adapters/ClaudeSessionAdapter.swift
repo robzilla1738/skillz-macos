@@ -2,6 +2,10 @@ import Foundation
 
 enum ClaudeSessionAdapter {
     static func scan() -> [AgentSession] {
+        scanSessionDirectory() + scanProjectTranscripts()
+    }
+
+    private static func scanSessionDirectory() -> [AgentSession] {
         let directory = AgentPaths.claudeSessionsDirectory
         guard FileManager.default.fileExists(atPath: directory.path),
               let files = try? FileManager.default.contentsOfDirectory(
@@ -14,6 +18,59 @@ enum ClaudeSessionAdapter {
         return files
             .filter { $0.pathExtension == "json" }
             .compactMap { parseSession(at: $0) }
+    }
+
+    private static func scanProjectTranscripts() -> [AgentSession] {
+        let root = AgentPlatform.claudeCode.homeDirectory.appendingPathComponent("projects", isDirectory: true)
+        guard FileManager.default.fileExists(atPath: root.path),
+              let enumerator = FileManager.default.enumerator(
+                at: root,
+                includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
+                options: [.skipsHiddenFiles]
+              )
+        else { return [] }
+
+        var files: [URL] = []
+        for case let file as URL in enumerator {
+            guard file.pathExtension == "jsonl",
+                  !file.path.contains("/subagents/")
+            else { continue }
+            files.append(file)
+        }
+
+        return files
+            .sorted { lhs, rhs in
+                let l = (try? lhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                let r = (try? rhs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+                return l > r
+            }
+            .prefix(6)
+            .compactMap { inferFromTranscript($0) }
+    }
+
+    private static func inferFromTranscript(_ url: URL) -> AgentSession? {
+        let modified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+        guard Date().timeIntervalSince(modified) < 300 else { return nil }
+
+        let projectName = url.deletingLastPathComponent().lastPathComponent
+        let cwd = decodedProjectPath(from: projectName)
+        let sessionID = url.deletingPathExtension().lastPathComponent
+        return AgentSession(
+            id: "claude:transcript:\(sessionID)",
+            platform: .claudeCode,
+            state: .working,
+            title: cwd.map { ($0 as NSString).lastPathComponent } ?? "Claude Code",
+            cwd: cwd,
+            pid: nil,
+            updatedAt: modified,
+            source: .fileWatch
+        )
+    }
+
+    private static func decodedProjectPath(from name: String) -> String? {
+        guard name.hasPrefix("-") else { return nil }
+        let path = "/" + name.dropFirst().replacingOccurrences(of: "-", with: "/")
+        return path == "/" ? nil : path
     }
 
     private static func parseSession(at url: URL) -> AgentSession? {

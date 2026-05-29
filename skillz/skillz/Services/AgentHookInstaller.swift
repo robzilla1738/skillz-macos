@@ -40,13 +40,13 @@ nonisolated struct AgentHookStatus: Equatable, Sendable {
 
 enum AgentHookInstaller {
     private static let skillzMarker = "skillz-agent-notify.sh"
-    private static let integrationVersion = "1"
+    private static let integrationVersion = "2"
 
     static func notifyCommand(for state: String, platform: AgentHookPlatform, extraArgs: String = "") -> String {
         let script = AgentPaths.notifyScriptInstalledURL.path
         let base = "\"\(script)\" \(platform.rawValue) \(state)"
         if extraArgs.isEmpty {
-            return base
+            return "\(base) \"\(platform.rawValue):$PPID\" \"\" \"$PWD\" \"$PPID\""
         }
         return "\(base) \(extraArgs)"
     }
@@ -216,10 +216,7 @@ enum AgentHookInstaller {
         var entries = hooks[key] as? [[String: Any]] ?? []
         entries.removeAll { entry in
             guard let nested = entry["hooks"] as? [[String: Any]] else { return false }
-            return nested.contains {
-                ($0["command"] as? String)?.contains(skillzMarker) == true
-                    || $0["skillz"] as? Bool == true
-            }
+            return nested.contains { isSkillzHook($0) }
         }
         entries.append([
             "matcher": "*",
@@ -289,19 +286,29 @@ enum AgentHookInstaller {
     private static func eventContainsSkillz(_ value: Any?) -> Bool {
         guard let entries = value as? [[String: Any]] else { return false }
         return entries.contains { entry in
-            if (entry["command"] as? String)?.contains(skillzMarker) == true { return true }
+            if isCurrentSkillzHook(entry) { return true }
             guard let nested = entry["hooks"] as? [[String: Any]] else { return false }
-            return nested.contains {
-                ($0["command"] as? String)?.contains(skillzMarker) == true
-                    || $0["skillz"] as? Bool == true
-            }
+            return nested.contains { isCurrentSkillzHook($0) }
         }
     }
 
     private static func cursorRootContainsSkillz(_ root: [String: Any]) -> Bool {
-        ["agent_notify", "agent_done", "agent_working"].allSatisfy {
+        guard root["skillz_integration_version"] as? String == integrationVersion else { return false }
+        return ["agent_notify", "agent_done", "agent_working"].allSatisfy {
             (root[$0] as? String)?.contains(skillzMarker) == true
         }
+    }
+
+    private static func isSkillzHook(_ entry: [String: Any]) -> Bool {
+        (entry["command"] as? String)?.contains(skillzMarker) == true
+            || entry["skillz"] as? Bool == true
+    }
+
+    private static func isCurrentSkillzHook(_ entry: [String: Any]) -> Bool {
+        guard let command = entry["command"] as? String,
+              command.contains(skillzMarker)
+        else { return false }
+        return command.contains("$PPID")
     }
 
     private static func loadJSONObject(at url: URL) throws -> [String: Any] {

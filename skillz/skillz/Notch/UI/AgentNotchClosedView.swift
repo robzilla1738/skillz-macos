@@ -3,22 +3,32 @@ import SwiftUI
 struct AgentNotchClosedView: View {
     let summary: AgentActivitySummary
 
-    private var visiblePlatforms: [AgentPlatform] {
-        let active = AgentPlatform.trackedAgentPlatforms.filter { platform in
-            guard let state = summary.bestSession(for: platform)?.state else { return false }
-            return state == .working || state == .needsInput || state == .idle
-        }
-        return active.isEmpty ? AgentPlatform.trackedAgentPlatforms : active
+    private var visibleSessions: [AgentSession] {
+        let sessions = summary.notchClosedSessions
+        return sessions.isEmpty ? AgentPlatform.trackedAgentPlatforms.map { platform in
+            AgentSession(
+                id: "inactive:\(platform.id)",
+                platform: platform,
+                state: .unknown,
+                title: platform.displayName,
+                cwd: nil,
+                pid: nil,
+                updatedAt: .distantPast,
+                source: .fileWatch
+            )
+        } : Array(sessions.prefix(6))
     }
 
     var body: some View {
-        HStack(spacing: 14) {
-            ForEach(visiblePlatforms, id: \.id) { platform in
-                platformGlyph(platform)
+        HStack(spacing: 10) {
+            ForEach(visibleSessions) { session in
+                sessionGlyph(session)
             }
 
-            if summary.needsInputCount > 0 {
-                needsInputBadge
+            if overflowCount > 0 {
+                Text("+\(overflowCount)")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(NotchMonochromeStyle.muted)
             }
         }
         .padding(.horizontal, 14)
@@ -27,41 +37,25 @@ struct AgentNotchClosedView: View {
         .accessibilityLabel(closedAccessibilityLabel)
     }
 
-    private var needsInputBadge: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(NotchMonochromeStyle.ink)
-                .frame(width: 5, height: 5)
-            Text("\(summary.needsInputCount)")
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(NotchMonochromeStyle.ink)
-        }
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3)
-        .overlay {
-            Capsule().strokeBorder(NotchMonochromeStyle.ink.opacity(0.85), lineWidth: 1)
-        }
-        .accessibilityLabel("\(summary.needsInputCount) waiting")
+    private var overflowCount: Int {
+        max(summary.notchClosedSessions.count - visibleSessions.count, 0)
     }
 
     @ViewBuilder
-    private func platformGlyph(_ platform: AgentPlatform) -> some View {
-        let session = summary.bestSession(for: platform)
-        let state = session?.state
-
+    private func sessionGlyph(_ session: AgentSession) -> some View {
         ZStack(alignment: .topTrailing) {
             PlatformBrandIcon(
-                platform: platform,
-                size: 11,
-                opacity: NotchMonochromeStyle.iconOpacity(for: state)
+                platform: session.platform,
+                size: 12,
+                opacity: NotchMonochromeStyle.iconOpacity(for: session.state)
             )
 
-            if state == .needsInput {
+            if session.state == .needsInput {
                 Circle()
                     .fill(NotchMonochromeStyle.ink)
                     .frame(width: 5, height: 5)
                     .offset(x: 3, y: -3)
-            } else if state == .working {
+            } else if session.state == .working {
                 Circle()
                     .strokeBorder(NotchMonochromeStyle.ink.opacity(0.7), lineWidth: 1)
                     .frame(width: 5, height: 5)
@@ -69,7 +63,7 @@ struct AgentNotchClosedView: View {
             }
         }
         .frame(width: 16, height: 16)
-        .accessibilityLabel("\(platform.displayName) \(session?.state.displayName ?? "inactive")")
+        .accessibilityLabel("\(session.platform.displayName) \(session.state.displayName)")
     }
 
     private var closedAccessibilityLabel: String {

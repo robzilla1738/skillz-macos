@@ -54,7 +54,9 @@ struct MainWindowView: View {
             minHeight: SkillzWindowMetrics.minHeight
         )
         .skillzCanvas()
-        .toolbar { toolbarContent }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            topBar
+        }
         .sheet(isPresented: $showDetailsSheet) {
             if let skill = selectedSkill {
                 SkillDetailsSheet(store: store, skill: skill, document: document)
@@ -164,29 +166,26 @@ struct MainWindowView: View {
         }
     }
 
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .navigation) {
-            Button {
-                showNewSkillSheet = true
-            } label: {
-                Text("New Skill")
-                    .font(SkillzPillMetrics.font)
+    private var topBar: some View {
+        HStack(spacing: SkillzSpacing.md) {
+            SkillzGlassToolbarGroup {
+                Button("New Skill") {
+                    showNewSkillSheet = true
+                }
+                .buttonStyle(SkillzGlassToolbarButtonStyle())
             }
             .help("Create a new skill (⌘N)")
-        }
 
-        ToolbarItem(placement: .navigation) {
-            Button {
-                store.refresh()
-            } label: {
-                Text("Refresh")
-                    .font(SkillzPillMetrics.font)
+            SkillzGlassToolbarGroup {
+                Button("Refresh") {
+                    store.refresh()
+                }
+                .buttonStyle(SkillzGlassToolbarButtonStyle())
             }
             .help("Refresh catalog (⌘R)")
-        }
 
-        ToolbarItemGroup(placement: .automatic) {
+            Spacer(minLength: SkillzSpacing.xl)
+
             if isSkillSelected {
                 SkillzGlassToolbarGroup {
                     HStack(spacing: 0) {
@@ -221,8 +220,19 @@ struct MainWindowView: View {
                     }
                 }
             }
+
+            SkillzGlassSearchField(
+                text: $store.searchText,
+                prompt: "Search skills, MCPs, plugins"
+            )
+            .frame(width: 440)
         }
-        .sharedBackgroundVisibility(.hidden)
+        .padding(.horizontal, SkillzSpacing.lg)
+        .padding(.vertical, SkillzSpacing.sm)
+        .background(Color.skillzCanvas)
+        .overlay(alignment: .bottom) {
+            SkillzHairline()
+        }
     }
 
     func saveCurrentSkill() {

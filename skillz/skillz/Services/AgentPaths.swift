@@ -4,6 +4,7 @@ nonisolated enum AgentPaths {
     static let stateFileVersion = 1
     static let staleWorkingInterval: TimeInterval = 90
     static let staleNeedsInputInterval: TimeInterval = 60 * 60
+    static let staleIdleInterval: TimeInterval = 8
     nonisolated(unsafe) static var environment = AgentEnvironment.live
 
     static var applicationSupportDirectory: URL {

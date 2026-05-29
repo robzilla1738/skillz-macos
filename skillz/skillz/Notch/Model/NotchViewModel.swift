@@ -79,13 +79,32 @@ final class NotchViewModel: ObservableObject {
         "\(session.id):\(session.state.rawValue)"
     }
 
-    func showAttention(for _: AgentSession) {
+    func showAttention(for session: AgentSession) {
+        showAttention()
+        if session.state == .idle {
+            scheduleFinishedDismiss()
+        }
+    }
+
+    private func showAttention() {
         dismissTask?.cancel()
         isPinnedOpen = false
         withAnimation(reduceMotion ? .easeInOut(duration: 0.22) : .interactiveSpring(response: 0.38, dampingFraction: 0.86)) {
             state = .open(.home)
         }
         onLayoutChange?()
+    }
+
+    private func scheduleFinishedDismiss() {
+        dismissTask?.cancel()
+        dismissTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3.2))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self, !self.isPinnedOpen else { return }
+                self.closeIfTransient()
+            }
+        }
     }
 
     private func closeIfTransient() {

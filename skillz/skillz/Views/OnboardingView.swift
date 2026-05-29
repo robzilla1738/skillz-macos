@@ -16,7 +16,8 @@ struct OnboardingView: View {
                     .font(.system(size: 24, weight: .semibold, design: .monospaced))
                     .foregroundStyle(Color.skillzEmphasis)
                 Spacer()
-                SkillzTag(text: "Agent Library", style: .muted)
+                Text("Agent Library")
+                    .skillzCaptionStyle()
             }
 
             HStack(alignment: .top, spacing: SkillzSpacing.xl) {
