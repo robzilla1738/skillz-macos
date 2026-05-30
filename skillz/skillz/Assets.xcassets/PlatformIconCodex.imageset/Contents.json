@@ -1,17 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "codex-black.svg",
-      "idiom" : "universal"
-    },
-    {
-      "appearances" : [
-        {
-          "appearance" : "luminosity",
-          "value" : "dark"
-        }
-      ],
-      "filename" : "codex-white.svg",
+      "filename" : "codex.svg",
       "idiom" : "universal"
     }
   ],

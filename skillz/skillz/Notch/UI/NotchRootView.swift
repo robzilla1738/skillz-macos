@@ -9,24 +9,29 @@ struct NotchRootView: View {
     var onRefresh: () -> Void
     var onInstallHooks: () -> Void
 
-    @State private var isHovering = false
-    @State private var hoverTask: Task<Void, Never>?
-
     private var displayRowCount: Int {
-        agentStore.summary.notchDisplaySessions.count
-    }
-
-    private var hasDisplayRows: Bool {
-        !agentStore.summary.notchDisplaySessions.isEmpty
+        agentStore.summary.notchSessions.count
     }
 
     private var showsHooksPrompt: Bool {
         hookStore.statuses.contains { $0.status != .installed && $0.status != .unsupported }
     }
 
+    private var isOpen: Bool { if case .open = notchModel.state { return true }; return false }
+    private var isClosed: Bool { if case .closed = notchModel.state { return true }; return false }
+    private var isHidden: Bool { if case .hidden = notchModel.state { return true }; return false }
+    private var peekKind: NotchPeekKind? {
+        if case let .peeking(kind) = notchModel.state { return kind }
+        return nil
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
             notchBody
+                // The shape (and the black fill) is the only thing that animates size: it grows/shrinks
+                // with a spring while the content below stays laid out at its natural size, so the panel
+                // is *revealed* by the clip rather than reflowed every frame. This is what makes the
+                // motion read as smooth.
                 .frame(width: notchModel.currentWidth, height: notchModel.currentHeight, alignment: .top)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .background(Color.black)
@@ -43,7 +48,7 @@ struct NotchRootView: View {
                     y: 2
                 )
                 .contentShape(Rectangle())
-                .onHover(perform: handleHover)
+                .opacity(isHidden ? 0 : 1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear {
@@ -59,33 +64,56 @@ struct NotchRootView: View {
         }
     }
 
-    @ViewBuilder
+    /// All states are layered and crossfaded by opacity. Each layer is laid out at its own resting
+    /// size so the animated clip frame above simply reveals/hides it — there is no per-frame reflow.
     private var notchBody: some View {
-        switch notchModel.state {
-        case .hidden:
-            EmptyView()
-        case .closed:
-            AgentNotchClosedView(summary: agentStore.summary, onReveal: onReveal)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                .onTapGesture {
-                    notchModel.open(pinned: true)
-                }
-        case .peeking(let kind):
-            peekContent(kind)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .padding(.top, 8)
-                .padding(.horizontal, 12)
-        case .open:
-            AgentNotchOpenView(
-                agentStore: agentStore,
-                hookStatuses: hookStore.statuses,
-                hasPhysicalNotch: notchModel.geometry.hasPhysicalNotch,
-                onClose: { notchModel.close() },
-                onReveal: onReveal,
-                onOpenSkillz: onOpenSkillz,
-                onRefresh: onRefresh,
-                onInstallHooks: onInstallHooks
-            )
+        ZStack(alignment: .top) {
+            closedLayer
+                .opacity(isClosed ? 1 : 0)
+                .allowsHitTesting(isClosed)
+
+            openLayer
+                .opacity(isOpen ? 1 : 0)
+                .allowsHitTesting(isOpen)
+
+            if let kind = peekKind {
+                peekContent(kind)
+                    .frame(
+                        width: max(notchModel.openLayout.width, 260),
+                        height: notchModel.geometry.closedHeight + 48,
+                        alignment: .top
+                    )
+                    .padding(.top, 8)
+                    .padding(.horizontal, 12)
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    private var closedLayer: some View {
+        AgentNotchClosedView(summary: agentStore.summary, onReveal: onReveal)
+            .frame(width: notchModel.geometry.closedWidth, height: notchModel.geometry.closedHeight)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                notchModel.open(pinned: true)
+            }
+    }
+
+    private var openLayer: some View {
+        AgentNotchOpenView(
+            agentStore: agentStore,
+            hookStatuses: hookStore.statuses,
+            hasPhysicalNotch: notchModel.geometry.hasPhysicalNotch,
+            onClose: { notchModel.close() },
+            onReveal: onReveal,
+            onOpenSkillz: onOpenSkillz,
+            onRefresh: onRefresh,
+            onInstallHooks: onInstallHooks
+        )
+        .frame(width: notchModel.openLayout.width, height: notchModel.openLayout.height, alignment: .top)
+        // Click anywhere that isn't an interactive control to collapse back to the HUD.
+        .onTapGesture {
+            notchModel.close()
         }
     }
 
@@ -120,38 +148,5 @@ struct NotchRootView: View {
             rowCount: displayRowCount,
             showsHooksPrompt: showsHooksPrompt
         )
-    }
-
-    private func handleHover(_ hovering: Bool) {
-        hoverTask?.cancel()
-
-        if hovering {
-            isHovering = true
-            notchModel.cancelPendingDismiss()
-            guard case .closed = notchModel.state else { return }
-            guard hasDisplayRows else { return }
-            hoverTask = Task {
-                try? await Task.sleep(for: .milliseconds(350))
-                guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    if isHovering, case .closed = notchModel.state {
-                        notchModel.open(pinned: false)
-                    }
-                }
-            }
-        } else {
-            hoverTask = Task {
-                try? await Task.sleep(for: .milliseconds(120))
-                guard !Task.isCancelled else { return }
-                await MainActor.run {
-                    isHovering = false
-                    if case .open = notchModel.state,
-                       !notchModel.isPinnedOpen,
-                       !agentStore.summary.hasNeedsInput {
-                        notchModel.close()
-                    }
-                }
-            }
-        }
     }
 }

@@ -11,7 +11,7 @@ struct AgentNotchOpenView: View {
     var onInstallHooks: () -> Void
 
     private var displayRows: [AgentSession] {
-        agentStore.summary.notchDisplaySessions
+        agentStore.summary.notchSessions
     }
 
     private var needsHooks: Bool {
@@ -65,15 +65,17 @@ struct AgentNotchOpenView: View {
     }
 
     private var headerCountLabel: String {
-        let count = displayRows.count
-        if count == 0 { return "None active" }
-        if agentStore.summary.needsInputCount > 0 {
-            return "\(agentStore.summary.needsInputCount) waiting"
-        }
-        if agentStore.summary.hasNotchAttention {
-            return count == 1 ? "1 stopped" : "\(count) stopped"
-        }
-        return "\(count) active"
+        let rows = displayRows
+        if rows.isEmpty { return "None active" }
+
+        let waiting = rows.filter { $0.state == .needsInput }.count
+        if waiting > 0 { return "\(waiting) waiting" }
+
+        let working = rows.filter { $0.state == .working }.count
+        if working > 0 { return working == 1 ? "1 working" : "\(working) working" }
+
+        let count = rows.count
+        return count == 1 ? "1 stopped" : "\(count) stopped"
     }
 
     @ViewBuilder
@@ -198,7 +200,8 @@ struct AgentNotchOpenView: View {
             return title
         }
 
-        return "Session active"
+        // No project context — fall back to what the agent is doing.
+        return session.state.displayName
     }
 
     private func projectName(from title: String) -> String? {

@@ -33,6 +33,7 @@ struct MainWindowView: View {
     var body: some View {
         VStack(spacing: 0) {
             topBar
+                .zIndex(1)
             NavigationSplitView {
                 SidebarView(store: store)
                     .navigationSplitViewColumnWidth(
@@ -40,6 +41,7 @@ struct MainWindowView: View {
                         ideal: SkillzWindowMetrics.sidebarIdeal,
                         max: SkillzWindowMetrics.sidebarMax
                     )
+                    .toolbar(removing: .sidebarToggle)
             } content: {
                 ItemListView(store: store)
                     .navigationSplitViewColumnWidth(
@@ -55,13 +57,15 @@ struct MainWindowView: View {
                     )
             }
             .navigationSplitViewStyle(.balanced)
-            .toolbar(removing: .sidebarToggle)
+            .ignoresSafeArea(.container, edges: .top)
+            .padding(.top, -SkillzWindowMetrics.sidebarTopInsetPull)
         }
         .frame(
             minWidth: SkillzWindowMetrics.minWidth,
             minHeight: SkillzWindowMetrics.minHeight
         )
         .skillzCanvas()
+        .ignoresSafeArea(.container, edges: .top)
         .background {
             SkillzWindowChromeCleaner()
                 .frame(width: 0, height: 0)
@@ -175,62 +179,75 @@ struct MainWindowView: View {
         }
     }
 
+    private var toolbarLeadingInset: CGFloat {
+        SkillzWindowMetrics.trafficLightReservedWidth
+    }
+
     private var topBar: some View {
-        HStack(spacing: SkillzSpacing.md) {
-            SkillzGlassToolbarGroup {
-                Button("New Skill") {
-                    showNewSkillSheet = true
+        HStack(spacing: 0) {
+            HStack(spacing: SkillzSpacing.md) {
+                SkillzGlassIconToolbarGroup {
+                    Button {
+                        toggleSidebar()
+                    } label: {
+                        Image(systemName: "sidebar.leading")
+                            .font(.system(size: 14, weight: .medium))
+                            .frame(width: SkillzPillMetrics.height, height: SkillzPillMetrics.height)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(SkillzGlassIconToolbarButtonStyle())
+                    .accessibilityLabel("Toggle Sidebar")
                 }
-                .buttonStyle(SkillzGlassToolbarButtonStyle())
-            }
-            .help("Create a new skill (⌘N)")
+                .help("Toggle sidebar (⌃⌘S)")
 
-            SkillzGlassToolbarGroup {
-                Button("Refresh") {
-                    store.refresh()
+                SkillzGlassToolbarGroup {
+                    Button("New Skill") {
+                        showNewSkillSheet = true
+                    }
+                    .buttonStyle(SkillzGlassToolbarButtonStyle())
                 }
-                .buttonStyle(SkillzGlassToolbarButtonStyle())
-            }
-            .help("Refresh catalog (⌘R)")
+                .help("Create a new skill (⌘N)")
 
-            SkillzGlassIconToolbarGroup {
-                Button {
-                    toggleSidebar()
-                } label: {
-                    Image(systemName: "sidebar.leading")
-                        .font(.system(size: 14, weight: .medium))
-                        .frame(width: SkillzPillMetrics.height, height: SkillzPillMetrics.height)
-                        .contentShape(Rectangle())
+                SkillzGlassToolbarGroup {
+                    Button("Refresh") {
+                        store.refresh()
+                    }
+                    .buttonStyle(SkillzGlassToolbarButtonStyle())
                 }
-                .buttonStyle(SkillzGlassIconToolbarButtonStyle())
+                .help("Refresh catalog (⌘R)")
             }
-            .help("Hide sidebar")
+            .padding(.leading, toolbarLeadingInset)
 
             Spacer(minLength: SkillzSpacing.xl)
 
-            if isSkillSelected {
-                SkillzGlassToolbarGroup {
-                    HStack(spacing: 0) {
-                        Button("Details") {
-                            editSelectedSkillDetails()
-                        }
-                        .buttonStyle(SkillzGlassToolbarButtonStyle())
-                        .help(canModifySkill ? "Edit skill metadata" : "View skill metadata")
+            HStack(spacing: SkillzSpacing.md) {
+                if isSkillSelected {
+                    SkillzGlassToolbarGroup {
+                        HStack(spacing: 0) {
+                            Button("Details") {
+                                editSelectedSkillDetails()
+                            }
+                            .buttonStyle(SkillzGlassToolbarButtonStyle())
+                            .help(canModifySkill ? "Edit skill metadata" : "View skill metadata")
 
-                        Button("Rename") {
-                            renameSelectedSkill()
-                        }
-                        .buttonStyle(SkillzGlassToolbarButtonStyle())
-                        .help("Rename skill folder")
-                        .disabled(!canModifySkill)
+                            Button("Rename") {
+                                renameSelectedSkill()
+                            }
+                            .buttonStyle(SkillzGlassToolbarButtonStyle())
+                            .help("Rename skill folder")
+                            .disabled(!canModifySkill)
 
-                        Button("Delete") {
-                            confirmDeleteSelectedSkill()
+                            Button("Delete") {
+                                confirmDeleteSelectedSkill()
+                            }
+                            .buttonStyle(SkillzGlassToolbarButtonStyle())
+                            .help("Delete skill folder")
+                            .disabled(!canModifySkill)
                         }
-                        .buttonStyle(SkillzGlassToolbarButtonStyle())
-                        .help("Delete skill folder")
-                        .disabled(!canModifySkill)
+                    }
 
+                    // The primary commit lives in its own group, away from the destructive Delete.
+                    SkillzGlassToolbarGroup {
                         Button("Save") {
                             saveCurrentSkill()
                         }
@@ -240,17 +257,17 @@ struct MainWindowView: View {
                         .disabled(!canSaveCurrentSkill)
                     }
                 }
-            }
 
-            SkillzGlassSearchField(
-                text: $store.searchText,
-                prompt: "Search skills, MCPs, plugins"
-            )
-            .frame(width: 440)
+                SkillzGlassSearchField(
+                    text: $store.searchText,
+                    prompt: "Search skills, MCPs, plugins"
+                )
+                .frame(width: 320)
+            }
         }
-        .padding(.leading, SkillzWindowMetrics.trafficLightReservedWidth)
         .padding(.trailing, SkillzSpacing.lg)
-        .padding(.vertical, SkillzSpacing.sm)
+        .padding(.top, SkillzSpacing.md)
+        .padding(.bottom, SkillzSpacing.sm)
         .background(Color.skillzCanvas)
         .overlay(alignment: .bottom) {
             SkillzHairline()

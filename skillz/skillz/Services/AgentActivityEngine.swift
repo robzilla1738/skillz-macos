@@ -249,7 +249,32 @@ struct AgentActivitySummary: Equatable, Sendable {
         return active.isEmpty ? sessions.filter { $0.state == .idle } : active
     }
 
+    /// The single source of truth for what the notch shows: one representative session per platform
+    /// (highest-priority state, then most recent). Collapsing per platform keeps the count and icons
+    /// honest — the same tool never appears twice even if it reports several concurrent sessions.
+    var notchSessions: [AgentSession] {
+        Self.collapsedByPlatform(notchDisplaySessions)
+    }
+
     var hasNotchAttention: Bool {
         !notchAttentionSessions.isEmpty
+    }
+
+    private static func collapsedByPlatform(_ sessions: [AgentSession]) -> [AgentSession] {
+        var seen = Set<AgentPlatform>()
+        var result: [AgentSession] = []
+        for session in sessions.sorted(by: notchPriority) {
+            if seen.insert(session.platform).inserted {
+                result.append(session)
+            }
+        }
+        return result
+    }
+
+    private static func notchPriority(_ lhs: AgentSession, _ rhs: AgentSession) -> Bool {
+        if lhs.state.priority != rhs.state.priority {
+            return lhs.state.priority > rhs.state.priority
+        }
+        return lhs.updatedAt > rhs.updatedAt
     }
 }

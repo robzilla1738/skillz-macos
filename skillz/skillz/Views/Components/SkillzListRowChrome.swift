@@ -8,6 +8,8 @@ struct SkillzListRowChrome: View {
         RoundedRectangle(cornerRadius: SkillzSpacing.sm)
             .fill(backgroundColor)
             .padding(.horizontal, SkillzSpacing.sm)
+            .animation(.easeOut(duration: 0.13), value: isHovered)
+            .animation(.easeOut(duration: 0.13), value: isSelected)
     }
 
     private var backgroundColor: Color {

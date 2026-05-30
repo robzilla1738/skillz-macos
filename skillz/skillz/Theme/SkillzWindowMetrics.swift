@@ -30,5 +30,13 @@ enum SkillzWindowMetrics {
 
     /// Horizontal space occupied by the standard macOS traffic-light controls
     /// when the titlebar is hidden and content extends into the titlebar area.
-    static let trafficLightReservedWidth: CGFloat = 112
+    /// Sized to clear the close/minimize/zoom cluster so the toolbar sits just to its right.
+    static let trafficLightReservedWidth: CGFloat = 88
+
+    /// Upward pull applied to the NavigationSplitView so the floating inset-sidebar
+    /// card tucks close to the top-bar divider. The system reserves extra title-bar
+    /// space above the card; this trims that surplus so the card's top margin matches
+    /// its side/bottom margins. The top bar renders above the split view (zIndex) so
+    /// any shadow above the divider is masked and the hairline stays crisp.
+    static let sidebarTopInsetPull: CGFloat = 14
 }

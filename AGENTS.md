@@ -7,6 +7,8 @@ macOS app for browsing, editing, and managing **agent harness artifacts** on dis
 ```
 skillz-macos/
 ├── CLAUDE.md / AGENTS.md     # This file (keep in sync)
+├── README.md                 # Public status, agent detection, CI, Sparkle placeholders
+├── .github/workflows/ci.yml  # Debug build + skillzTests on macos-26
 └── skillz/                   # Xcode project root
     ├── skillz.xcodeproj
     ├── skillz/               # App target sources
@@ -20,7 +22,7 @@ skillz-macos/
     │   ├── Resources/        # skillz-agent-notify.sh (bundled, installed to ~/.skillz/bin)
     │   ├── Assets.xcassets/  # AppIcon, Skillz* colors, PlatformIcon* SVG/vector assets
     │   └── ThirdParty/       # icon notices / third-party licenses
-    ├── skillzTests/         # Swift Testing unit tests
+    ├── skillzTests/          # Swift Testing unit tests
     └── skillzUITests/        # UI tests (launch smoke)
 ```
 
@@ -36,7 +38,7 @@ Xcode uses **PBXFileSystemSynchronizedRootGroup** — new files under `skillz/sk
 | Tests | Swift Testing (`@Test` in `skillzTests`) |
 | Icons | Asset-catalog platform icons (`PlatformIcon*`) rendered as template images in sidebar/notch |
 
-**Deployment:** macOS **26.2+**, bundle ID `robertcourson.skillz`, **not sandboxed** (`skillz.entitlements` → `com.apple.security.app-sandbox` = false) so the app can read `~/.cursor`, `~/.claude`, `~/.codex`, etc.
+**Deployment:** macOS **26.2+**, bundle ID `robertcourson.skillz`, **not sandboxed** (`skillz.entitlements` → `com.apple.security.app-sandbox` = false) so the app can read `~/.cursor`, `~/.claude`, `~/.codex`, etc. UI product name is **Skills** (`AppBrand.name`).
 
 ## Build and test
 
@@ -50,16 +52,18 @@ xcodebuild -scheme skillz -destination 'platform=macOS' test
 - **Scheme:** `skillz`
 - **Unit tests:** `skillzTests` — 32 `@Test` functions (frontmatter, catalog filter, platform paths, agent engine, process runner, hooks, file service, notch layout calculator, discovery smoke)
 - **UI tests:** `skillzUITests` — launch/performance (slow); skip unless needed
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`) — Debug build + `-only-testing:skillzTests` on `macos-26`
 
-Release notes are inline in `skillz.entitlements` (Developer ID, archive, notarize, staple).
+Release checklist is inline in `skillz.entitlements` (Developer ID, archive, notarize, staple). Public shipping/update notes live in `README.md` and `docs/UPDATES.md`.
 
 ## Architecture
 
 ### App entry and scenes
 
-- **`skillzApp`**: `WindowGroup` → `MainWindowView` with hidden titlebar; `MenuBarExtra` → agent menu + **Skillz app icon** (`MenuBarIcon` / `NSApp.applicationIconImage`); `Settings` scene; `NotchAppDelegate` for notch lifecycle.
+- **`skillzApp`**: `WindowGroup` → `MainWindowView` with hidden titlebar; `MenuBarExtra` → agent menu + **menu-bar glyph** (`SkillzMenuBarIconView` — a template SF Symbol that the system tints, so it stays visible on light/dark menu bars; the app icon is a near-black mark unusable here); `Settings` scene; `NotchAppDelegate` for notch lifecycle.
 - **`SkillzStartupConfigurator`**: on first appear, wires `NotchAppDelegate.configure(agentStore:settings:)`.
-- **`SkillzWindowChromeCleaner`**: AppKit bridge that removes the native toolbar/title row and reserves custom top-bar layout around traffic-light controls.
+- **`SkillzWindowChromeCleaner`**: AppKit bridge — clears native toolbar/titlebar chrome and hides stray AppKit sidebar-toggle buttons in the title bar.
+- **`ContentColumnLayoutObserver`**: AppKit bridge — tracks the list column’s leading edge so the custom top bar animates with sidebar collapse/resize.
 
 ### Main window (`NavigationSplitView`)
 
@@ -71,6 +75,8 @@ Release notes are inline in `skillz.entitlements` (Developer ID, archive, notari
 
 **State:** `CatalogStore` (snapshot, filters, selection, FSEvents rescan), `EditorDocument` (markdown autosave), `AppSettings` (`@AppStorage`).
 
+**Top bar** (full-width row above the split view): glass pills for New Skill, Refresh, and sidebar toggle track list-column inset via `ContentColumnLayoutObserver`; skill action pills and the search field stay trailing-aligned. Sidebar uses `.toolbar(removing: .sidebarToggle)` — the custom toolbar button is the only sidebar control.
+
 ### Catalog discovery
 
 - **`DiscoveryEngine`** orchestrates `SkillScanner`, `MCPScanner`, `PluginScanner`.
@@ -78,6 +84,7 @@ Release notes are inline in `skillz.entitlements` (Developer ID, archive, notari
 - **`PlatformSourceDetector`** — which harness folders exist; drives empty states and “New Skill” defaults.
 - **`CatalogFilter`** — section × platform × search.
 - Live rescan: `FSEventWatcher` + refresh on `NSApplication.didBecomeActive`.
+- **List rows:** `PlatformBadge` + `EnabledBadge` (`.subtle` tag) for plugins; shared-skill info button when applicable.
 
 ### Skill editing
 
@@ -106,6 +113,10 @@ Release notes are inline in `skillz.entitlements` (Developer ID, archive, notari
 - UI: `NotchRootView`, `AgentNotchClosedView`, `AgentNotchOpenView` (monochrome); brand icons via **`PlatformBrandIcon`** + `PlatformIcon*` assets.
 - **`NotchShape`** — rounded rect clip (straight sides; do not reintroduce inset side curves).
 - Open width ~440pt+; panel padding/frame changes are debounced and animated to avoid AppKit constraint loops.
+- **Always rests in the visible closed pill** while enabled (idle shows a quiet `sparkles` mark); `.hidden` is only for when the feature is switched off.
+- **Exact-size resting window:** `panelSize` for `.closed`/`.hidden` is exactly the pill (no padding) so the always-on notch never leaves an invisible region over the menu bar that swallows clicks. Padding/shadow margin is only added for `.open`/`.peeking`. Keep it this way.
+- **Global mouse monitor drives hover + click-through:** `NotchWindowController` runs a global+local `mouseMoved` monitor that (1) toggles `panel.ignoresMouseEvents` so the overlay only claims clicks while the cursor is over a cached `hotZone`, and (2) feeds `NotchViewModel.setHovering(_:)` (single source of truth for hover expand/collapse). Keep the handler O(1) — never do heavy work there. The panel uses `animationBehavior = .none` and `ignoresMouseEvents = true` by default.
+- **Reveal-by-clip animation:** each state is a fixed-size layer crossfaded by opacity; only the `NotchShape` clip frame springs (open/close springs in `NotchViewModel`), so content is revealed rather than reflowed every frame.
 - Closed state shows compact working-session icons; hover or a needs-input session expands the notch.
 
 ### Settings tabs
@@ -116,7 +127,7 @@ General (appearance, hide built-in Cursor/Codex skills, inspector) · **Sources*
 
 - **Colors:** `Assets.xcassets` — `SkillzCanvas`, `SkillzInk`, `SkillzEmphasis`, `SkillzMuted`, `SkillzSectionLabel`, `SkillzHairline`, `SkillzSelection`.
 - **Typography:** `SkillzTypography` — monospaced scale; primary UI text uses **`SkillzEmphasis`** (~#333), not pure black; editor uses `SkillzTypography.editor(size:)`.
-- **Components:** `SkillzComponents.swift` (tags, glass search, detail rows), `SkillzTextStyles` view modifiers.
+- **Components:** `SkillzComponents.swift` (tags, glass search/toolbar groups, detail rows), `SkillzTextStyles` view modifiers.
 - **Window chrome:** main window owns its custom top bar; do not reintroduce SwiftUI/AppKit toolbar title text or the native sidebar toggle.
 - **Notch:** `NotchMonochromeStyle` — black panel, white-only UI.
 
@@ -138,10 +149,9 @@ MCP configs: Cursor `mcp.json`, Claude `.mcp.json`, Codex `config.toml`. Plugins
 - **Non-sandboxed** — required for scanning user agent dirs; do not enable app sandbox without redesigning file access.
 - **Test PIDs** — avoid `pid: 1` in agent engine tests (treated as stale/system).
 - **Notch layout** — call `updateOpenLayout` when session count / hooks / state change; `NotchShape` must keep vertical side edges at full width.
-- **Platform icons** — keep platform icons as SVG/vector assets with transparent backgrounds and `template-rendering-intent`; do not use page-backed PDFs for sidebar/notch icons because they render as solid blocks.
-- **Codex icon** — `PlatformIconCodex` uses the provided Codex SVG, with black/light and white/dark variants.
+- **Platform icons** — SVG assets with transparent backgrounds and `template-rendering-intent`; do not use page-backed PDFs (they render as solid blocks). See `ThirdParty/platform-icons-NOTICE.txt` for sources.
+- **Codex icon** — `PlatformIconCodex` is a single `codex.svg`; path arcs must be CoreSVG-safe (minified `a`/`A` commands break rendering in the asset catalog).
 - **OpenCode compatibility** — process detection accepts `opencode`/`open-code` and legacy `openclaw`/`open-claw`; path handling still uses `OpenClawConfig` until the on-disk layout changes.
-- **Git** — repo root may not be a git root; don’t assume `git` metadata.
 - **Commits** — only when the user asks.
 - **Third-party icons** — retain `ThirdParty/lobe-icons-LICENSE.txt` when updating Lobe assets.
 

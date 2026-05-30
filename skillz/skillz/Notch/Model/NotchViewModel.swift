@@ -18,12 +18,34 @@ final class NotchViewModel: ObservableObject {
     var onLayoutChange: (() -> Void)?
 
     private var dismissTask: Task<Void, Never>?
+    private var hoverInsideTask: Task<Void, Never>?
+    private var hoverOutsideTask: Task<Void, Never>?
     private var previousAttentionKeys: Set<String> = []
+
+    /// How long the cursor must rest over the closed pill before it expands. Short enough to feel
+    /// instant, long enough to ignore the cursor merely passing across the notch.
+    private let hoverOpenDelay: Duration = .milliseconds(120)
+    /// Small grace period before collapsing so brief excursions off the panel edge don't flicker it.
+    private let hoverCloseDelay: Duration = .milliseconds(150)
     private var layoutRowCount = 1
     private var layoutShowsHooksPrompt = false
 
+    /// Whether there is anything worth showing in the resting notch (working, waiting, or stopped sessions).
+    private(set) var hasContent = false
+
     var reduceMotion: Bool {
         NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
+    /// Lively, lightly-bouncy spring for revealing/expanding the notch — the shape grows into place
+    /// like the Dynamic Island. A little overshoot reads as "alive" without feeling loose.
+    var openAnimation: Animation {
+        reduceMotion ? .easeInOut(duration: 0.22) : .spring(response: 0.4, dampingFraction: 0.78)
+    }
+
+    /// Quick, near-critically-damped spring for collapsing — fluid with no lingering bounce.
+    var closeAnimation: Animation {
+        reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.3, dampingFraction: 0.86)
     }
 
     var panelSize: (width: CGFloat, height: CGFloat) {
@@ -37,8 +59,11 @@ final class NotchViewModel: ObservableObject {
             )
             return NotchLayoutCalculator.panelSize(for: peekLayout, closedHeight: geometry.closedHeight)
         case .closed, .hidden:
-            let closedLayout = NotchOpenLayout(width: geometry.closedWidth, height: geometry.closedHeight)
-            return NotchLayoutCalculator.panelSize(for: closedLayout, closedHeight: geometry.closedHeight)
+            // The resting pill uses an *exact-size* window (no padding/shadow margin) so the always-on
+            // notch never leaves an invisible region over the menu bar that would swallow clicks. The
+            // padded window is only used while open/peeking, where the larger interactive area is
+            // expected and the shadow needs room.
+            return (width: geometry.closedWidth, height: geometry.closedHeight)
         }
     }
 
@@ -61,8 +86,16 @@ final class NotchViewModel: ObservableObject {
         )
     }
 
+    /// Refresh resting visibility from the latest summary without triggering attention drop-downs.
+    func refreshContent(from summary: AgentActivitySummary) {
+        hasContent = !summary.notchClosedSessions.isEmpty || summary.hasNotchAttention
+    }
+
     func bind(to agentStore: AgentSessionStore) {
-        let attention = agentStore.summary.notchAttentionSessions
+        let summary = agentStore.summary
+        hasContent = !summary.notchClosedSessions.isEmpty || summary.hasNotchAttention
+
+        let attention = summary.notchAttentionSessions
         let attentionKeys = Set(attention.map(attentionKey(for:)))
         let newAttention = attention.filter { !previousAttentionKeys.contains(attentionKey(for: $0)) }
 
@@ -89,7 +122,7 @@ final class NotchViewModel: ObservableObject {
     private func showAttention() {
         dismissTask?.cancel()
         isPinnedOpen = false
-        withAnimation(reduceMotion ? .easeInOut(duration: 0.22) : .interactiveSpring(response: 0.38, dampingFraction: 0.86)) {
+        withAnimation(openAnimation) {
             state = .open(.home)
         }
         onLayoutChange?()
@@ -112,6 +145,40 @@ final class NotchViewModel: ObservableObject {
         dismissTask = nil
     }
 
+    /// Single source of truth for hover-driven expansion, fed by the controller's mouse monitor.
+    /// Expands the closed pill after a short delay and collapses an un-pinned panel when the cursor
+    /// leaves. Pinned-open panels (opened by a click) are left alone — only a click closes those.
+    func setHovering(_ inside: Bool) {
+        if inside {
+            hoverOutsideTask?.cancel()
+            hoverOutsideTask = nil
+            cancelPendingDismiss()
+            guard case .closed = state, hoverInsideTask == nil else { return }
+            hoverInsideTask = Task { [weak self] in
+                try? await Task.sleep(for: self?.hoverOpenDelay ?? .milliseconds(120))
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    guard let self else { return }
+                    self.hoverInsideTask = nil
+                    if case .closed = self.state { self.open(pinned: false) }
+                }
+            }
+        } else {
+            hoverInsideTask?.cancel()
+            hoverInsideTask = nil
+            guard case .open = state, !isPinnedOpen, hoverOutsideTask == nil else { return }
+            hoverOutsideTask = Task { [weak self] in
+                try? await Task.sleep(for: self?.hoverCloseDelay ?? .milliseconds(150))
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    guard let self else { return }
+                    self.hoverOutsideTask = nil
+                    if case .open = self.state, !self.isPinnedOpen { self.close() }
+                }
+            }
+        }
+    }
+
     func openTransient(duration: TimeInterval = 2.4) {
         open(pinned: false)
         dismissTask = Task { [weak self] in
@@ -124,18 +191,24 @@ final class NotchViewModel: ObservableObject {
         }
     }
 
+    /// The notch always rests in its closed (pill) form while the feature is enabled, so there is a
+    /// visible, Dynamic-Island-style indicator even with no active agents. `.hidden` is reserved for
+    /// when the notch is switched off entirely (handled by `hide()` / the window controller).
+    private var restingState: NotchState { .closed }
+
     private func closeIfTransient() {
         dismissTask?.cancel()
-        if case .closed = state { return }
-        withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 1)) {
-            state = .closed
+        let target = restingState
+        if state == target { return }
+        withAnimation(closeAnimation) {
+            state = target
         }
         onLayoutChange?()
     }
 
     func showPeek(_ kind: NotchPeekKind, duration: TimeInterval = 1.6) {
         dismissTask?.cancel()
-        withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .smooth) {
+        withAnimation(openAnimation) {
             state = .peeking(kind)
         }
         onLayoutChange?()
@@ -145,7 +218,7 @@ final class NotchViewModel: ObservableObject {
             await MainActor.run {
                 guard let self else { return }
                 if case .peeking = self.state {
-                    withAnimation(self.reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 1)) {
+                    withAnimation(self.closeAnimation) {
                         self.state = .closed
                     }
                     self.onLayoutChange?()
@@ -157,7 +230,7 @@ final class NotchViewModel: ObservableObject {
     func open(_ panel: NotchPanelMode = .home, pinned: Bool = false) {
         dismissTask?.cancel()
         isPinnedOpen = pinned
-        withAnimation(reduceMotion ? .easeInOut(duration: 0.25) : .interactiveSpring(response: 0.38, dampingFraction: 0.82)) {
+        withAnimation(openAnimation) {
             state = .open(panel)
         }
         onLayoutChange?()
@@ -166,8 +239,8 @@ final class NotchViewModel: ObservableObject {
     func close() {
         dismissTask?.cancel()
         isPinnedOpen = false
-        withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 1)) {
-            state = .closed
+        withAnimation(closeAnimation) {
+            state = restingState
         }
         onLayoutChange?()
     }

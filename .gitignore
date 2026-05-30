@@ -26,3 +26,6 @@ dist/
 release/
 *.app.zip
 *.sparkle_ed_signature
+
+# Coverage / scratch artifacts
+*.profraw

@@ -68,7 +68,7 @@ struct SidebarView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(AppBrand.name)
                 .skillzNavigationTitleStyle()
 
@@ -77,8 +77,8 @@ struct SidebarView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, SkillzSpacing.lg)
-        .padding(.top, SkillzSpacing.lg)
-        .padding(.bottom, SkillzSpacing.sm)
+        .padding(.top, SkillzSpacing.md)
+        .padding(.bottom, SkillzSpacing.md)
         .background(Color.skillzCanvas)
     }
 

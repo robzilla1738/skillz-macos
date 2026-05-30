@@ -16,7 +16,7 @@ struct EnabledBadge: View {
     var body: some View {
         SkillzTag(
             text: isEnabled ? "Enabled" : "Disabled",
-            style: isEnabled ? .filled : .muted
+            style: .subtle
         )
         .accessibilityLabel(isEnabled ? "Enabled" : "Disabled")
     }

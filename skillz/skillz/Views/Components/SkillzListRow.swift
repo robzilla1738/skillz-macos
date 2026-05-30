@@ -14,6 +14,11 @@ struct SkillzListRow: View {
                 PlatformBadge(platform: item.platform)
                     .fixedSize()
 
+                if case .plugin(let plugin) = item {
+                    EnabledBadge(isEnabled: plugin.isEnabled)
+                        .fixedSize()
+                }
+
                 if case .skill(let skill) = item, skill.hasSharedAvailability {
                     SharedSkillInfoButton(
                         primary: skill.platform,
@@ -23,21 +28,36 @@ struct SkillzListRow: View {
                 }
 
                 Spacer(minLength: SkillzSpacing.sm)
-
-                if case .plugin(let plugin) = item {
-                    EnabledBadge(isEnabled: plugin.isEnabled)
-                        .fixedSize()
-                }
             }
 
-            Text(item.descriptionText)
+            Text(subtitleText)
                 .skillzBodySecondaryStyle()
-                .lineLimit(2)
+                .lineLimit(2, reservesSpace: true)
+                .truncationMode(.tail)
+                .multilineTextAlignment(.leading)
         }
-        .frame(minHeight: SkillzSpacing.rowMinHeight, alignment: .leading)
+        .frame(minHeight: SkillzSpacing.rowMinHeight, alignment: .topLeading)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .accessibilityLabel("\(item.kind.displayName), \(item.displayName), \(item.platform.displayName)")
-        .accessibilityHint(item.descriptionText)
+        .accessibilityHint(subtitleText)
+    }
+
+    /// A subtitle is always present so every row keeps the same shape. Prefer the description;
+    /// fall back to a meaningful source/path so rows without a description don't collapse or read
+    /// as broken. Reserves two lines of height (above) so the list stays a uniform grid.
+    private var subtitleText: String {
+        let description = item.descriptionText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !description.isEmpty {
+            return description
+        }
+
+        let fallback = item.listSubtitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !fallback.isEmpty,
+           fallback.caseInsensitiveCompare(item.displayName) != .orderedSame {
+            return fallback
+        }
+
+        return "No description"
     }
 }

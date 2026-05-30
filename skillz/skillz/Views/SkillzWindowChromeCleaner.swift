@@ -26,5 +26,18 @@ struct SkillzWindowChromeCleaner: NSViewRepresentable {
         if #available(macOS 11.0, *) {
             window.titlebarSeparatorStyle = .none
         }
+        hideNativeSidebarToggle(in: window.contentView)
+    }
+
+    private func hideNativeSidebarToggle(in view: NSView?) {
+        guard let view else { return }
+        if let button = view as? NSButton,
+           button.action == #selector(NSSplitViewController.toggleSidebar(_:)) {
+            button.isHidden = true
+            return
+        }
+        for subview in view.subviews {
+            hideNativeSidebarToggle(in: subview)
+        }
     }
 }

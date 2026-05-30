@@ -1,6 +1,13 @@
 import Foundation
 
 nonisolated enum ShellAgentProcessAdapter {
+    /// Testable seam: resolve the agent platform for a process command/arguments, or nil if not an agent.
+    static func matchedPlatform(commandName: String, arguments: String) -> AgentPlatform? {
+        AgentProcessSpec.allCases.first {
+            $0.matches(commandName: commandName.lowercased(), arguments: arguments.lowercased())
+        }?.platform
+    }
+
     static func scan() -> [AgentSession] {
         let candidates = processRows().compactMap { row -> (ProcessRow, AgentProcessSpec)? in
             guard let spec = AgentProcessSpec.match(for: row) else { return nil }
@@ -114,7 +121,11 @@ nonisolated private enum AgentProcessSpec: CaseIterable {
     func matches(commandName: String, arguments: String) -> Bool {
         switch self {
         case .cursor:
-            return commandName == "cursor"
+            // Match the Cursor agent CLI, not the Cursor desktop app or its Electron helpers.
+            if arguments.contains("/applications/cursor.app/contents/macos/") { return false }
+            if arguments.contains("--type=") { return false }
+            if commandName.contains("helper") { return false }
+            return commandName == "cursor-agent" || commandName == "cursor"
         case .claudeCode:
             return (commandName == "claude" || arguments.hasPrefix("claude "))
                 && !arguments.contains(" remote-control")

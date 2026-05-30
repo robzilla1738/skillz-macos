@@ -276,6 +276,36 @@ struct skillzTests {
         #expect(workingSummary.notchDisplaySessions.map(\.id) == ["cursor-working"])
     }
 
+    @Test func notchSessionsCollapseToOnePerPlatform() {
+        let now = Date()
+        let sessions = [
+            AgentSession(
+                id: "claude-a", platform: .claudeCode, state: .working,
+                title: "claude", cwd: "/Users/x/proj", pid: nil, updatedAt: now, source: .hooks
+            ),
+            AgentSession(
+                id: "claude-b", platform: .claudeCode, state: .needsInput,
+                title: "claude", cwd: "/Users/x/.claude", pid: nil,
+                updatedAt: now.addingTimeInterval(-5), source: .hooks
+            ),
+            AgentSession(
+                id: "claude-c", platform: .claudeCode, state: .working,
+                title: "claude", cwd: "/Users/x/other", pid: nil,
+                updatedAt: now.addingTimeInterval(-10), source: .hooks
+            ),
+            AgentSession(
+                id: "cursor-working", platform: .cursor, state: .working,
+                title: "cursor", cwd: "/Users/x/repo", pid: nil, updatedAt: now, source: .hooks
+            ),
+        ]
+
+        let summary = AgentActivityEngine.summary(for: sessions)
+        // One representative per platform, highest-priority first: Claude (needsInput) then Cursor.
+        #expect(summary.notchSessions.map(\.platform) == [.claudeCode, .cursor])
+        #expect(summary.notchSessions.first?.state == .needsInput)
+        #expect(summary.notchSessions.count == 2)
+    }
+
     @Test func shellProcessRunnerCapturesOutputAndTimesOut() {
         let echo = ShellProcessRunner.run(
             executablePath: "/bin/echo",
@@ -691,11 +721,61 @@ struct skillzTests {
 
         try? await Task.sleep(for: .milliseconds(40))
         #expect(model.isPinnedOpen == false)
+        // The notch always rests in its visible closed pill rather than hiding entirely.
         #expect(model.state == .closed)
     }
 
     @Test func trackedAgentPlatformsIncludeAllSupportedTools() {
         #expect(AgentPlatform.trackedAgentPlatforms == [.cursor, .claudeCode, .codex, .hermes, .pi, .openClaw])
+    }
+
+    @Test func cursorDesktopAppIsNotDetectedAsAgent() {
+        // The Cursor IDE binary and its Electron helpers must not register as a working agent.
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "Cursor",
+            arguments: "/Applications/Cursor.app/Contents/MacOS/Cursor"
+        ) == nil)
+
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "Cursor Helper (Renderer)",
+            arguments: "/Applications/Cursor.app/Contents/Frameworks/Cursor Helper.app/Contents/MacOS/Cursor Helper --type=renderer"
+        ) == nil)
+
+        // The Cursor agent CLI should still be detected.
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "cursor-agent",
+            arguments: "cursor-agent chat"
+        ) == .cursor)
+    }
+
+    @MainActor
+    @Test func notchRestsClosedWhetherOrNotThereIsContent() {
+        let model = NotchViewModel()
+
+        // With no sessions the notch still rests in its visible closed pill (it never hides on its own).
+        model.refreshContent(from: AgentActivityEngine.summary(for: []))
+        model.close()
+        #expect(model.hasContent == false)
+        #expect(model.state == .closed)
+
+        let working = AgentSession(
+            id: "cursor:process:4242",
+            platform: .cursor,
+            state: .working,
+            title: "proj",
+            cwd: "/tmp/proj",
+            pid: nil,
+            updatedAt: Date(),
+            source: .process
+        )
+        model.refreshContent(from: AgentActivityEngine.summary(for: [working]))
+        model.close()
+        #expect(model.hasContent == true)
+        #expect(model.state == .closed)
+
+        // `hide()` is still the explicit way to remove the notch when the feature is disabled.
+        model.hide()
+        #expect(model.state == .hidden)
     }
 
     private static func makeSkill(name: String, platform: AgentPlatform) -> SkillItem {
