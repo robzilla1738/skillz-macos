@@ -1,10 +1,10 @@
 import SwiftUI
+import AppKit
 
 struct SkillzStartupConfigurator: View {
     @ObservedObject var agentStore: AgentSessionStore
     @ObservedObject var hookStore: AgentHookStore
     @ObservedObject var settings: AppSettings
-    var notchDelegate: NotchAppDelegate
 
     @State private var didConfigure = false
 
@@ -15,8 +15,33 @@ struct SkillzStartupConfigurator: View {
                 guard !didConfigure else { return }
                 didConfigure = true
                 guard !SkillzRuntime.isRunningAppHostedTests else { return }
-                notchDelegate.configure(agentStore: agentStore, hookStore: hookStore, settings: settings)
+                configureAgentMonitoring()
             }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                guard didConfigure, !SkillzRuntime.isRunningAppHostedTests else { return }
+                agentStore.reopenWatching()
+                refreshHooksForCurrentSettings()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                agentStore.stop()
+            }
+    }
+
+    private func configureAgentMonitoring() {
+        agentStore.start()
+        refreshHooksForCurrentSettings(initial: true)
+    }
+
+    private func refreshHooksForCurrentSettings(initial: Bool = false) {
+        if settings.autoInstallAgentHooks {
+            if initial {
+                hookStore.autoInstallIfNeeded()
+            } else {
+                hookStore.autoRepairIfNeeded()
+            }
+        } else {
+            hookStore.refresh()
+        }
     }
 }
 

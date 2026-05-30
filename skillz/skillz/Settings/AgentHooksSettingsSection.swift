@@ -5,39 +5,24 @@ struct AgentHooksSettingsSection: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var agentStore: AgentSessionStore
     @ObservedObject var hookStore: AgentHookStore
-    var onNotchEnabledChange: (Bool) -> Void
 
     var body: some View {
         SettingsPane(
             title: "Agents",
-            subtitle: "Configure live agent detection, the notch, and menu bar status."
+            subtitle: "Configure live agent detection, menu bar status, and activity hooks."
         ) {
             Form {
                 Section {
-                    Toggle("Show agent notch", isOn: $settings.enableAgentNotch)
+                    Toggle("Show waiting count in menu bar", isOn: $settings.showAgentCountInMenuBar)
                         .font(SkillzTypography.body)
-                        .onChange(of: settings.enableAgentNotch) { _, enabled in
-                            onNotchEnabledChange(enabled)
-                        }
-
-                    Picker("Display", selection: displaySelection) {
-                        Text("Main display").tag(Optional<String>.none)
-                        ForEach(screenOptions, id: \.uuid) { option in
-                            Text(option.name).tag(Optional(option.uuid))
-                        }
-                    }
-                    .font(SkillzTypography.body)
                 } header: {
-                    Text("Notch")
+                    Text("Menu Bar")
                 } footer: {
-                    Text("The agent notch sits at the top center of your display and opens when Codex, Cursor, or Claude Code need your input.")
+                    Text("The menu bar item shows live agent activity and can refresh detection manually.")
                         .skillzCaptionStyle()
                 }
 
                 Section {
-                    Toggle("Show waiting count in menu bar", isOn: $settings.showAgentCountInMenuBar)
-                        .font(SkillzTypography.body)
-
                     Toggle("Install or repair hooks automatically", isOn: $settings.autoInstallAgentHooks)
                         .font(SkillzTypography.body)
                         .onChange(of: settings.autoInstallAgentHooks) { _, enabled in
@@ -107,20 +92,6 @@ struct AgentHooksSettingsSection: View {
             .onAppear {
                 hookStore.refresh()
             }
-        }
-    }
-
-    private var displaySelection: Binding<String?> {
-        Binding(
-            get: { settings.agentNotchDisplayUUID },
-            set: { settings.agentNotchDisplayUUID = $0 }
-        )
-    }
-
-    private var screenOptions: [(uuid: String, name: String)] {
-        NSScreen.screens.compactMap { screen in
-            guard let uuid = screen.displayUUID else { return nil }
-            return (uuid, screen.localizedName)
         }
     }
 

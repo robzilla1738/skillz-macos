@@ -8,7 +8,6 @@ import AppKit
 
 @main
 struct skillzApp: App {
-    @NSApplicationDelegateAdaptor(NotchAppDelegate.self) private var notchDelegate
     @StateObject private var store = CatalogStore()
     @StateObject private var document = EditorDocument()
     @StateObject private var settings = AppSettings.shared
@@ -23,8 +22,7 @@ struct skillzApp: App {
                     SkillzStartupConfigurator(
                         agentStore: agentStore,
                         hookStore: hookStore,
-                        settings: settings,
-                        notchDelegate: notchDelegate
+                        settings: settings
                     )
                 }
         }
@@ -98,12 +96,6 @@ struct skillzApp: App {
                     store.refresh()
                 }
 
-                Divider()
-
-                Button("Open Agent Notch") {
-                    notchDelegate.openNotch()
-                }
-
                 Button("Refresh Agents") {
                     agentStore.refresh()
                 }
@@ -114,10 +106,9 @@ struct skillzApp: App {
             AgentMenuBarView(
                 agentStore: agentStore,
                 settings: settings,
-                onOpenNotch: { notchDelegate.openNotch() },
+                onOpenSession: { openAgentSession($0) },
                 onOpenSkills: { activateMainWindow() },
                 onOpenSettings: { SettingsWindowOpener.openAgentsTab() },
-                onSetNotchEnabled: { notchDelegate.setNotchEnabled($0) },
                 onRefresh: { agentStore.refresh() },
                 onQuit: { NSApp.terminate(nil) }
             )
@@ -130,10 +121,7 @@ struct skillzApp: App {
                 settings: settings,
                 store: store,
                 agentStore: agentStore,
-                hookStore: hookStore,
-                onNotchEnabledChange: { enabled in
-                    notchDelegate.setNotchEnabled(enabled)
-                }
+                hookStore: hookStore
             )
             .preferredColorScheme(settings.appearance.colorScheme)
         }
@@ -160,9 +148,25 @@ struct skillzApp: App {
 
     private func activateMainWindow() {
         NSApp.activate(ignoringOtherApps: true)
-        for window in NSApp.windows where !(window is NotchPanel) {
+        for window in NSApp.windows {
             window.makeKeyAndOrderFront(nil)
             return
+        }
+    }
+
+    private func openAgentSession(_ session: AgentSession) {
+        Task { @MainActor in
+            if await AgentSessionActivator.activateOwningApp(for: session) {
+                return
+            }
+
+            if let cwd = session.cwd {
+                let url = URL(fileURLWithPath: cwd, isDirectory: true)
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+                return
+            }
+
+            activateMainWindow()
         }
     }
 }
@@ -187,10 +191,9 @@ private struct AgentMenuBarLabel: View {
 private struct AgentMenuBarView: View {
     @ObservedObject var agentStore: AgentSessionStore
     @ObservedObject var settings: AppSettings
-    var onOpenNotch: () -> Void
+    var onOpenSession: (AgentSession) -> Void
     var onOpenSkills: () -> Void
     var onOpenSettings: () -> Void
-    var onSetNotchEnabled: (Bool) -> Void
     var onRefresh: () -> Void
     var onQuit: () -> Void
 
@@ -201,7 +204,7 @@ private struct AgentMenuBarView: View {
             } else {
                 ForEach(agentStore.summary.notchDisplaySessions.prefix(6)) { session in
                     Button {
-                        onOpenNotch()
+                        onOpenSession(session)
                     } label: {
                         Label {
                             Text("\(session.platform.displayName) · \(session.state.displayName)")
@@ -215,13 +218,9 @@ private struct AgentMenuBarView: View {
 
         Section {
             Toggle("Show waiting count", isOn: $settings.showAgentCountInMenuBar)
-            Toggle("Show agent notch", isOn: notchEnabled)
         }
 
         Section {
-            Button(action: onOpenNotch) {
-                Label("Open Agent Notch", systemImage: "rectangle.topthird.inset.filled")
-            }
             Button(action: onOpenSkills) {
                 Label("Open \(AppBrand.name)", systemImage: "rectangle.stack")
             }
@@ -247,16 +246,6 @@ private struct AgentMenuBarView: View {
         case .idle: return "pause.circle"
         case .unknown: return "questionmark.circle"
         }
-    }
-
-    private var notchEnabled: Binding<Bool> {
-        Binding(
-            get: { settings.enableAgentNotch },
-            set: { enabled in
-                settings.enableAgentNotch = enabled
-                onSetNotchEnabled(enabled)
-            }
-        )
     }
 }
 

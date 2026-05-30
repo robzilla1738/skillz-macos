@@ -260,7 +260,7 @@ struct AgentActivitySummary: Equatable, Sendable {
         !notchAttentionSessions.isEmpty
     }
 
-    private static func collapsedByPlatform(_ sessions: [AgentSession]) -> [AgentSession] {
+    nonisolated private static func collapsedByPlatform(_ sessions: [AgentSession]) -> [AgentSession] {
         var seen = Set<AgentPlatform>()
         var result: [AgentSession] = []
         for session in sessions.sorted(by: notchPriority) {
@@ -271,7 +271,7 @@ struct AgentActivitySummary: Equatable, Sendable {
         return result
     }
 
-    private static func notchPriority(_ lhs: AgentSession, _ rhs: AgentSession) -> Bool {
+    nonisolated private static func notchPriority(_ lhs: AgentSession, _ rhs: AgentSession) -> Bool {
         if lhs.state.priority != rhs.state.priority {
             return lhs.state.priority > rhs.state.priority
         }

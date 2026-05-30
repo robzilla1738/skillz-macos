@@ -2,7 +2,7 @@
 
 Skills is a macOS app for browsing, editing, and managing local agent harness assets: skills, MCP server configs, and plugins across Cursor, Claude Code, Codex, Hermes, Pi, and OpenClaw.
 
-It also includes a menu bar monitor and Dynamic Island-style agent notch for live Cursor, Claude Code, and Codex session status. Working agents stay compact; stopped or waiting agents surface so users can act quickly.
+It also includes a menu bar monitor for live Cursor, Claude Code, and Codex session status, including waiting-agent counts for sessions that need input.
 
 ## Status
 

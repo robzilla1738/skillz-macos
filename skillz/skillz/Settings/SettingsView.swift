@@ -23,7 +23,6 @@ struct SettingsView: View {
     @ObservedObject var store: CatalogStore
     @ObservedObject var agentStore: AgentSessionStore
     @ObservedObject var hookStore: AgentHookStore
-    var onNotchEnabledChange: (Bool) -> Void
     @State private var selectedTab: SettingsTab = .general
 
     var body: some View {
@@ -77,8 +76,7 @@ struct SettingsView: View {
             AgentHooksSettingsSection(
                 settings: settings,
                 agentStore: agentStore,
-                hookStore: hookStore,
-                onNotchEnabledChange: onNotchEnabledChange
+                hookStore: hookStore
             )
         case .editor:
             editorSettings

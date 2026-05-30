@@ -65,7 +65,7 @@ struct OnboardingView: View {
                     }
 
                     VStack(alignment: .leading, spacing: SkillzSpacing.sm) {
-                        Toggle("Enable agent notch", isOn: $settings.enableAgentNotch)
+                        Toggle("Show waiting count in menu bar", isOn: $settings.showAgentCountInMenuBar)
                             .font(SkillzTypography.body)
 
                         Toggle("Show inspector by default", isOn: $settings.showInspector)
@@ -133,7 +133,7 @@ private struct OnboardingStep {
         ),
         OnboardingStep(
             title: "Watch live agents",
-            message: "The menu bar and notch show Codex, Claude Code, and Cursor activity. Working agents stay compact; stopped or waiting agents open so you can act quickly.",
+            message: "The menu bar shows Codex, Claude Code, and Cursor activity. Waiting agents are counted so you can see when a session needs input.",
             symbolName: "dot.radiowaves.left.and.right"
         )
     ]
