@@ -16,8 +16,8 @@ struct NotchRootView: View {
         agentStore.summary.notchDisplaySessions.count
     }
 
-    private var hasAttentionRows: Bool {
-        agentStore.summary.hasNotchAttention
+    private var hasDisplayRows: Bool {
+        !agentStore.summary.notchDisplaySessions.isEmpty
     }
 
     private var showsHooksPrompt: Bool {
@@ -57,9 +57,6 @@ struct NotchRootView: View {
         .onChange(of: hookStore.statuses) { _, _ in
             syncLayout()
         }
-        .onChange(of: notchModel.state) { _, _ in
-            syncLayout()
-        }
     }
 
     @ViewBuilder
@@ -68,7 +65,7 @@ struct NotchRootView: View {
         case .hidden:
             EmptyView()
         case .closed:
-            AgentNotchClosedView(summary: agentStore.summary)
+            AgentNotchClosedView(summary: agentStore.summary, onReveal: onReveal)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                 .onTapGesture {
                     notchModel.open(pinned: true)
@@ -130,8 +127,9 @@ struct NotchRootView: View {
 
         if hovering {
             isHovering = true
+            notchModel.cancelPendingDismiss()
             guard case .closed = notchModel.state else { return }
-            guard hasAttentionRows else { return }
+            guard hasDisplayRows else { return }
             hoverTask = Task {
                 try? await Task.sleep(for: .milliseconds(350))
                 guard !Task.isCancelled else { return }
@@ -147,7 +145,9 @@ struct NotchRootView: View {
                 guard !Task.isCancelled else { return }
                 await MainActor.run {
                     isHovering = false
-                    if case .open = notchModel.state, !notchModel.isPinnedOpen, !hasAttentionRows {
+                    if case .open = notchModel.state,
+                       !notchModel.isPinnedOpen,
+                       !agentStore.summary.hasNeedsInput {
                         notchModel.close()
                     }
                 }

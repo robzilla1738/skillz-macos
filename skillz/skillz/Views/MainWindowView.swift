@@ -26,36 +26,45 @@ struct MainWindowView: View {
         return SkillFileService.canModify(skill)
     }
 
+    private var canSaveCurrentSkill: Bool {
+        isSkillSelected && document.fileURL != nil && document.isDirty
+    }
+
     var body: some View {
-        NavigationSplitView {
-            SidebarView(store: store)
-                .navigationSplitViewColumnWidth(
-                    min: SkillzWindowMetrics.sidebarMin,
-                    ideal: SkillzWindowMetrics.sidebarIdeal,
-                    max: SkillzWindowMetrics.sidebarMax
-                )
-        } content: {
-            ItemListView(store: store)
-                .navigationSplitViewColumnWidth(
-                    min: SkillzWindowMetrics.listMin,
-                    ideal: SkillzWindowMetrics.listIdeal,
-                    max: SkillzWindowMetrics.listMax
-                )
-        } detail: {
-            DetailContainerView(store: store, document: document, settings: settings)
-                .navigationSplitViewColumnWidth(
-                    min: SkillzWindowMetrics.detailMin,
-                    ideal: SkillzWindowMetrics.detailIdeal
-                )
+        VStack(spacing: 0) {
+            topBar
+            NavigationSplitView {
+                SidebarView(store: store)
+                    .navigationSplitViewColumnWidth(
+                        min: SkillzWindowMetrics.sidebarMin,
+                        ideal: SkillzWindowMetrics.sidebarIdeal,
+                        max: SkillzWindowMetrics.sidebarMax
+                    )
+            } content: {
+                ItemListView(store: store)
+                    .navigationSplitViewColumnWidth(
+                        min: SkillzWindowMetrics.listMin,
+                        ideal: SkillzWindowMetrics.listIdeal,
+                        max: SkillzWindowMetrics.listMax
+                    )
+            } detail: {
+                DetailContainerView(store: store, document: document, settings: settings)
+                    .navigationSplitViewColumnWidth(
+                        min: SkillzWindowMetrics.detailMin,
+                        ideal: SkillzWindowMetrics.detailIdeal
+                    )
+            }
+            .navigationSplitViewStyle(.balanced)
+            .toolbar(removing: .sidebarToggle)
         }
-        .navigationSplitViewStyle(.balanced)
         .frame(
             minWidth: SkillzWindowMetrics.minWidth,
             minHeight: SkillzWindowMetrics.minHeight
         )
         .skillzCanvas()
-        .safeAreaInset(edge: .top, spacing: 0) {
-            topBar
+        .background {
+            SkillzWindowChromeCleaner()
+                .frame(width: 0, height: 0)
         }
         .sheet(isPresented: $showDetailsSheet) {
             if let skill = selectedSkill {
@@ -117,13 +126,13 @@ struct MainWindowView: View {
             showRenameSheet = false
         }
         .onReceive(NotificationCenter.default.publisher(for: .skillzEditDetails)) { _ in
-            if canModifySkill { showDetailsSheet = true }
+            editSelectedSkillDetails()
         }
         .onReceive(NotificationCenter.default.publisher(for: .skillzRenameSkill)) { _ in
-            if canModifySkill { showRenameSheet = true }
+            renameSelectedSkill()
         }
         .onReceive(NotificationCenter.default.publisher(for: .skillzDeleteSkill)) { _ in
-            if canModifySkill { showDeleteConfirmation = true }
+            confirmDeleteSelectedSkill()
         }
         .onReceive(NotificationCenter.default.publisher(for: .skillzNewSkill)) { _ in
             showNewSkillSheet = true
@@ -184,27 +193,39 @@ struct MainWindowView: View {
             }
             .help("Refresh catalog (⌘R)")
 
+            SkillzGlassIconToolbarGroup {
+                Button {
+                    toggleSidebar()
+                } label: {
+                    Image(systemName: "sidebar.leading")
+                        .font(.system(size: 14, weight: .medium))
+                        .frame(width: SkillzPillMetrics.height, height: SkillzPillMetrics.height)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(SkillzGlassIconToolbarButtonStyle())
+            }
+            .help("Hide sidebar")
+
             Spacer(minLength: SkillzSpacing.xl)
 
             if isSkillSelected {
                 SkillzGlassToolbarGroup {
                     HStack(spacing: 0) {
                         Button("Details") {
-                            showDetailsSheet = true
+                            editSelectedSkillDetails()
                         }
                         .buttonStyle(SkillzGlassToolbarButtonStyle())
-                        .help("Edit skill metadata")
-                        .disabled(!canModifySkill)
+                        .help(canModifySkill ? "Edit skill metadata" : "View skill metadata")
 
                         Button("Rename") {
-                            showRenameSheet = true
+                            renameSelectedSkill()
                         }
                         .buttonStyle(SkillzGlassToolbarButtonStyle())
                         .help("Rename skill folder")
                         .disabled(!canModifySkill)
 
                         Button("Delete") {
-                            showDeleteConfirmation = true
+                            confirmDeleteSelectedSkill()
                         }
                         .buttonStyle(SkillzGlassToolbarButtonStyle())
                         .help("Delete skill folder")
@@ -216,7 +237,7 @@ struct MainWindowView: View {
                         .buttonStyle(SkillzGlassToolbarButtonStyle(prominent: document.isDirty))
                         .help("Save now (⌘S)")
                         .keyboardShortcut("s", modifiers: .command)
-                        .disabled(!document.isDirty)
+                        .disabled(!canSaveCurrentSkill)
                     }
                 }
             }
@@ -227,7 +248,8 @@ struct MainWindowView: View {
             )
             .frame(width: 440)
         }
-        .padding(.horizontal, SkillzSpacing.lg)
+        .padding(.leading, SkillzWindowMetrics.trafficLightReservedWidth)
+        .padding(.trailing, SkillzSpacing.lg)
         .padding(.vertical, SkillzSpacing.sm)
         .background(Color.skillzCanvas)
         .overlay(alignment: .bottom) {
@@ -236,7 +258,51 @@ struct MainWindowView: View {
     }
 
     func saveCurrentSkill() {
+        guard isSkillSelected else {
+            store.lastOperationError = "Select a skill before saving."
+            return
+        }
+        guard document.fileURL != nil else {
+            store.lastOperationError = "No editable skill file is loaded."
+            return
+        }
         _ = document.saveImmediately()
+    }
+
+    func toggleSidebar() {
+        NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
+    }
+
+    func editSelectedSkillDetails() {
+        guard isSkillSelected else {
+            store.lastOperationError = "Select a skill before editing details."
+            return
+        }
+        showDetailsSheet = true
+    }
+
+    func renameSelectedSkill() {
+        guard let skill = selectedSkill else {
+            store.lastOperationError = "Select a skill before renaming."
+            return
+        }
+        guard SkillFileService.canModify(skill) else {
+            store.lastOperationError = SkillFileService.modificationBlockedReason(skill)
+            return
+        }
+        showRenameSheet = true
+    }
+
+    func confirmDeleteSelectedSkill() {
+        guard let skill = selectedSkill else {
+            store.lastOperationError = "Select a skill before deleting."
+            return
+        }
+        guard SkillFileService.canModify(skill) else {
+            store.lastOperationError = SkillFileService.modificationBlockedReason(skill)
+            return
+        }
+        showDeleteConfirmation = true
     }
 
     func deleteSelectedSkill() {

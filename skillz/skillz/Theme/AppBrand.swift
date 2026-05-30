@@ -1,3 +1,3 @@
-enum AppBrand {
+nonisolated enum AppBrand {
     static let name = "Skills"
 }

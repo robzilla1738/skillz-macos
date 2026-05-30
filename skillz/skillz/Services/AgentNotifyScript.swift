@@ -1,6 +1,6 @@
 import Foundation
 
-enum AgentNotifyScript {
+nonisolated enum AgentNotifyScript {
     static let content = """
     #!/bin/sh
     # Skills agent activity notifier
@@ -13,7 +13,7 @@ enum AgentNotifyScript {
     input_file="$(mktemp "${TMPDIR:-/tmp}/skillz-agent-hook.XXXXXX")" || exit 0
     trap 'rm -f "$input_file"' EXIT HUP INT TERM
     cat >"$input_file" 2>/dev/null || true
-    case "$platform" in cursor|claudeCode|codex) ;; *) exit 0 ;; esac
+    case "$platform" in cursor|claudeCode|codex|hermes|pi|openClaw) ;; *) exit 0 ;; esac
     case "$state" in working|idle|needsInput|release) ;; *) exit 0 ;; esac
     STATE_DIR="${HOME}/Library/Application Support/Skillz"
     STATE_FILE="${STATE_DIR}/agent-state.json"

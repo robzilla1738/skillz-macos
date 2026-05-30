@@ -1,17 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "claude-black.svg",
-      "idiom" : "universal"
-    },
-    {
-      "appearances" : [
-        {
-          "appearance" : "luminosity",
-          "value" : "dark"
-        }
-      ],
-      "filename" : "claude-white.svg",
+      "filename" : "hermesagent.svg",
       "idiom" : "universal"
     }
   ],

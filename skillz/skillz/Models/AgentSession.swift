@@ -1,6 +1,6 @@
 import Foundation
 
-enum AgentActivityState: String, Codable, Sendable, CaseIterable {
+nonisolated enum AgentActivityState: String, Codable, Sendable, CaseIterable {
     case idle
     case working
     case needsInput
@@ -25,7 +25,7 @@ enum AgentActivityState: String, Codable, Sendable, CaseIterable {
     }
 }
 
-struct AgentSession: Identifiable, Equatable, Sendable {
+nonisolated struct AgentSession: Identifiable, Equatable, Sendable {
     let id: String
     let platform: AgentPlatform
     var state: AgentActivityState
@@ -44,13 +44,14 @@ struct AgentSession: Identifiable, Equatable, Sendable {
     }
 }
 
-enum AgentSessionSource: String, Codable, Sendable {
+nonisolated enum AgentSessionSource: String, Codable, Sendable {
     case hooks
     case fileWatch
+    case process
     case merged
 }
 
-struct AgentStateSnapshot: Codable, Sendable {
+nonisolated struct AgentStateSnapshot: Codable, Sendable {
     static let currentVersion = 1
 
     var version: Int
@@ -62,7 +63,7 @@ struct AgentStateSnapshot: Codable, Sendable {
     }
 }
 
-struct AgentSessionRecord: Codable, Sendable, Equatable {
+nonisolated struct AgentSessionRecord: Codable, Sendable, Equatable {
     var id: String
     var platform: String
     var state: String
@@ -98,8 +99,8 @@ struct AgentSessionRecord: Codable, Sendable, Equatable {
     }
 }
 
-extension AgentPlatform {
-    static var trackedAgentPlatforms: [AgentPlatform] {
-        [.cursor, .claudeCode, .codex]
+nonisolated extension AgentPlatform {
+    nonisolated static var trackedAgentPlatforms: [AgentPlatform] {
+        [.cursor, .claudeCode, .codex, .hermes, .pi, .openClaw]
     }
 }

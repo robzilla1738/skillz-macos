@@ -179,6 +179,24 @@ struct SkillzGlassToolbarGroup<Content: View>: View {
     }
 }
 
+struct SkillzGlassIconToolbarGroup<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        if #available(macOS 26.0, *) {
+            GlassEffectContainer {
+                content
+                    .frame(width: SkillzPillMetrics.height, height: SkillzPillMetrics.height)
+                    .glassEffect(in: Circle())
+            }
+        } else {
+            content
+                .frame(width: SkillzPillMetrics.height, height: SkillzPillMetrics.height)
+                .background(.regularMaterial, in: Circle())
+        }
+    }
+}
+
 struct SkillzGlassSearchField: View {
     @Binding var text: String
     let prompt: String
@@ -210,6 +228,8 @@ struct SkillzGlassToolbarButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(SkillzPillMetrics.font)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, SkillzPillMetrics.horizontalPadding)
             .frame(height: SkillzPillMetrics.height)
             .foregroundStyle(foregroundColor)
@@ -218,13 +238,24 @@ struct SkillzGlassToolbarButtonStyle: ButtonStyle {
                     Capsule().fill(Color.skillzInk)
                 }
             }
-            .opacity(configuration.isPressed ? 0.75 : 1)
+            .opacity(isEnabled ? (configuration.isPressed ? 0.75 : 1) : 0.45)
     }
 
     private var foregroundColor: Color {
         guard isEnabled else { return Color.skillzMuted }
         if prominent { return Color.skillzCanvas }
         return Color.skillzEmphasis
+    }
+}
+
+struct SkillzGlassIconToolbarButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .frame(width: SkillzPillMetrics.height, height: SkillzPillMetrics.height)
+            .foregroundStyle(isEnabled ? Color.skillzEmphasis : Color.skillzMuted)
+            .opacity(isEnabled ? (configuration.isPressed ? 0.75 : 1) : 0.45)
     }
 }
 

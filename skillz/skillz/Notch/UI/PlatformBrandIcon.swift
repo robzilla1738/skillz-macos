@@ -9,6 +9,7 @@ struct PlatformBrandIcon: View {
         Group {
             if let assetName = platform.brandIconAssetName {
                 Image(assetName)
+                    .renderingMode(.template)
                     .resizable()
                     .scaledToFit()
                     .frame(width: size, height: size)

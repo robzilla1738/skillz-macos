@@ -1,6 +1,6 @@
 import Foundation
 
-enum CursorSessionAdapter {
+nonisolated enum CursorSessionAdapter {
     private static let recentWindow: TimeInterval = 180
 
     static func scan() -> [AgentSession] {

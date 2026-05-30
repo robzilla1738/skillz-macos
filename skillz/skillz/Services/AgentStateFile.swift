@@ -1,6 +1,6 @@
 import Foundation
 
-enum AgentStateFile {
+nonisolated enum AgentStateFile {
     static func ensureExists() throws {
         let directory = AgentPaths.applicationSupportDirectory
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

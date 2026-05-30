@@ -27,4 +27,8 @@ enum SkillzWindowMetrics {
     static let fileTreeMax: CGFloat = 200
 
     static let editorMin: CGFloat = 420
+
+    /// Horizontal space occupied by the standard macOS traffic-light controls
+    /// when the titlebar is hidden and content extends into the titlebar area.
+    static let trafficLightReservedWidth: CGFloat = 112
 }

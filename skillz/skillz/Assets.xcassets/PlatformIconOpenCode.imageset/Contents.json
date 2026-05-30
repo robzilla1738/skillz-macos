@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "claude-black.svg",
+      "filename" : "opencode-black.svg",
       "idiom" : "universal"
     },
     {
@@ -11,7 +11,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "claude-white.svg",
+      "filename" : "opencode-white.svg",
       "idiom" : "universal"
     }
   ],

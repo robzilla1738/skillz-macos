@@ -9,6 +9,8 @@ final class NotchWindowController: NSWindowController {
     private weak var hookStore: AgentHookStore?
     private weak var settings: AppSettings?
     private var hostingView: NSHostingView<AnyView>?
+    private var pendingFrameTask: Task<Void, Never>?
+    private var lastAppliedFrame: NSRect?
 
     convenience init(agentStore: AgentSessionStore, hookStore: AgentHookStore, settings: AppSettings) {
         let screen = DisplayManager.shared.preferredScreen(settings: settings) ?? NSScreen.main ?? NSScreen.screens[0]
@@ -19,7 +21,7 @@ final class NotchWindowController: NSWindowController {
         self.settings = settings
         notchModel.updateGeometry(for: screen)
         notchModel.onLayoutChange = { [weak self] in
-            self?.applyPanelFrame(animated: true)
+            self?.schedulePanelFrame(animated: true)
         }
         setupContent()
         applyPanelFrame(animated: false)
@@ -46,7 +48,7 @@ final class NotchWindowController: NSWindowController {
     }
 
     func openNotch() {
-        notchModel.open(pinned: true)
+        notchModel.openTransient()
         window?.orderFrontRegardless()
     }
 
@@ -72,15 +74,31 @@ final class NotchWindowController: NSWindowController {
             height: size.height
         )
 
+        if let lastAppliedFrame, lastAppliedFrame.isNearlyEqual(to: frame) {
+            return
+        }
+        lastAppliedFrame = frame
+
         let shouldAnimate = animated && !notchModel.reduceMotion
         if shouldAnimate {
             NSAnimationContext.runAnimationGroup { context in
                 context.duration = 0.38
                 context.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-                window.animator().setFrame(frame, display: true)
+                window.animator().setFrame(frame, display: false)
             }
         } else {
-            window.setFrame(frame, display: true)
+            window.setFrame(frame, display: false)
+        }
+    }
+
+    private func schedulePanelFrame(animated: Bool) {
+        pendingFrameTask?.cancel()
+        pendingFrameTask = Task { [weak self] in
+            await Task.yield()
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self?.applyPanelFrame(animated: animated)
+            }
         }
     }
 
@@ -96,7 +114,9 @@ final class NotchWindowController: NSWindowController {
             agentStore: agentStore,
             hookStore: hookStore,
             onReveal: { [weak self] session in
-                self?.reveal(session)
+                Task { @MainActor [weak self] in
+                    await self?.reveal(session)
+                }
             },
             onOpenSkillz: { [weak self] in
                 self?.activateMainApp()
@@ -114,16 +134,23 @@ final class NotchWindowController: NSWindowController {
         if let hostingView {
             hostingView.rootView = anyView
         } else if let window {
+            let container = NSView(frame: window.contentView?.bounds ?? window.frame)
+            container.autoresizingMask = [.width, .height]
+
             let hosting = NSHostingView(rootView: anyView)
-            hosting.frame = window.contentView?.bounds ?? .zero
+            hosting.frame = container.bounds
             hosting.autoresizingMask = [.width, .height]
-            window.contentView = hosting
+            if #available(macOS 13.0, *) {
+                hosting.sizingOptions = []
+            }
+            container.addSubview(hosting)
+            window.contentView = container
             hostingView = hosting
         }
     }
 
-    private func reveal(_ session: AgentSession) {
-        if AgentSessionActivator.activateOwningApp(for: session) {
+    private func reveal(_ session: AgentSession) async {
+        if await AgentSessionActivator.activateOwningApp(for: session) {
             return
         }
 
@@ -148,6 +175,15 @@ final class NotchWindowController: NSWindowController {
         rebuildContent()
         NSApp.activate(ignoringOtherApps: true)
         SettingsWindowOpener.openAgentsTab()
+    }
+}
+
+private extension NSRect {
+    func isNearlyEqual(to other: NSRect) -> Bool {
+        abs(origin.x - other.origin.x) < 0.5
+            && abs(origin.y - other.origin.y) < 0.5
+            && abs(size.width - other.size.width) < 0.5
+            && abs(size.height - other.size.height) < 0.5
     }
 }
 

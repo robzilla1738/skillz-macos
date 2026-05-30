@@ -5,19 +5,22 @@ struct ItemContextMenu: View {
     let item: CatalogItem
 
     var body: some View {
-        if let skill = item.skillItem, SkillFileService.canModify(skill) {
+        if let skill = item.skillItem {
             Button("Edit Details…") {
                 store.selectedItemID = item.id
                 NotificationCenter.default.post(name: .skillzEditDetails, object: nil)
             }
-            Button("Rename Skill…") {
-                store.selectedItemID = item.id
-                NotificationCenter.default.post(name: .skillzRenameSkill, object: nil)
-            }
-            Divider()
-            Button("Delete Skill…", role: .destructive) {
-                store.selectedItemID = item.id
-                NotificationCenter.default.post(name: .skillzDeleteSkill, object: nil)
+
+            if SkillFileService.canModify(skill) {
+                Button("Rename Skill…") {
+                    store.selectedItemID = item.id
+                    NotificationCenter.default.post(name: .skillzRenameSkill, object: nil)
+                }
+                Divider()
+                Button("Delete Skill…", role: .destructive) {
+                    store.selectedItemID = item.id
+                    NotificationCenter.default.post(name: .skillzDeleteSkill, object: nil)
+                }
             }
             Divider()
         }

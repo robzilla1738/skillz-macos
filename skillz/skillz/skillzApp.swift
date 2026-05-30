@@ -32,7 +32,7 @@ struct skillzApp: App {
             width: SkillzWindowMetrics.defaultWidth,
             height: SkillzWindowMetrics.defaultHeight
         )
-        .windowToolbarStyle(.unified(showsTitle: false))
+        .windowStyle(.hiddenTitleBar)
         .commands {
             SidebarCommands()
             TextEditingCommands()
@@ -42,7 +42,7 @@ struct skillzApp: App {
                     saveSkill()
                 }
                 .keyboardShortcut("s", modifiers: .command)
-                .disabled(!document.isDirty || store.selectedItem?.skillItem == nil)
+                .disabled(!document.isDirty || document.fileURL == nil || store.selectedItem?.skillItem == nil)
             }
 
             CommandMenu("File") {
@@ -63,7 +63,7 @@ struct skillzApp: App {
                 Button("Edit Details…") {
                     NotificationCenter.default.post(name: .skillzEditDetails, object: nil)
                 }
-                .disabled(!store.canModifySelectedSkill())
+                .disabled(store.selectedItem?.skillItem == nil)
 
                 Button("Rename Skill…") {
                     NotificationCenter.default.post(name: .skillzRenameSkill, object: nil)

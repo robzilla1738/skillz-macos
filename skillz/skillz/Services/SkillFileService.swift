@@ -2,17 +2,31 @@ import Foundation
 
 enum SkillFileService {
     static func canModify(_ skill: SkillItem) -> Bool {
-        !skill.isBuiltIn && !skill.isPluginEmbedded
+        guard !skill.isBuiltIn,
+              isFolderBackedSkill(skill)
+        else { return false }
+
+        return FileManager.default.isWritableFile(atPath: skill.rootDirectory.path)
+            && FileManager.default.isWritableFile(atPath: skill.rootDirectory.deletingLastPathComponent().path)
+    }
+
+    static func canEditMetadata(_ skill: SkillItem) -> Bool {
+        FileManager.default.isWritableFile(atPath: skill.skillPath.path)
     }
 
     static func modificationBlockedReason(_ skill: SkillItem) -> String {
         if skill.isBuiltIn {
-            return "Built-in Cursor skills cannot be modified from \(AppBrand.name)."
+            return "Built-in Cursor skills cannot be renamed or deleted from \(AppBrand.name)."
         }
-        if skill.isPluginEmbedded {
-            return "Plugin-bundled skills cannot be modified from \(AppBrand.name). Edit the plugin install folder directly."
+        if !isFolderBackedSkill(skill) {
+            return "This skill is stored as a single SKILL.md file, so only its metadata can be edited from \(AppBrand.name)."
         }
-        return ""
+        return "This skill folder is not writable by \(AppBrand.name). Check file permissions or edit it in its install folder."
+    }
+
+    static func metadataBlockedReason(_ skill: SkillItem) -> String {
+        if canEditMetadata(skill) { return "" }
+        return "This SKILL.md file is not writable by \(AppBrand.name). Check file permissions or edit it in its install folder."
     }
 
     static func renameSkill(_ skill: SkillItem, newFolderName: String) throws -> URL {
@@ -56,8 +70,8 @@ enum SkillFileService {
         description: String,
         version: String?
     ) throws {
-        guard canModify(skill) else {
-            throw SkillFileError.blocked(modificationBlockedReason(skill))
+        guard canEditMetadata(skill) else {
+            throw SkillFileError.blocked(metadataBlockedReason(skill))
         }
 
         let validatedName = try SkillNameValidator.validate(name).get()
@@ -116,6 +130,12 @@ enum SkillFileService {
         }
 
         return createdPaths
+    }
+
+    private static func isFolderBackedSkill(_ skill: SkillItem) -> Bool {
+        skill.rootDirectory.appendingPathComponent("SKILL.md").path == skill.skillPath.path
+            && skill.rootDirectory.lastPathComponent != "skills"
+            && !skill.rootDirectory.lastPathComponent.hasSuffix("skills")
     }
 }
 

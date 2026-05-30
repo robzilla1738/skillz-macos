@@ -14,7 +14,15 @@ struct SkillzStartupConfigurator: View {
             .onAppear {
                 guard !didConfigure else { return }
                 didConfigure = true
+                guard !SkillzRuntime.isRunningAppHostedTests else { return }
                 notchDelegate.configure(agentStore: agentStore, hookStore: hookStore, settings: settings)
             }
+    }
+}
+
+enum SkillzRuntime {
+    static var isRunningAppHostedTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+            || ProcessInfo.processInfo.arguments.contains { $0.contains(".xctest") }
     }
 }

@@ -1,7 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "openai.svg",
+      "filename" : "codex-black.svg",
+      "idiom" : "universal"
+    },
+    {
+      "appearances" : [
+        {
+          "appearance" : "luminosity",
+          "value" : "dark"
+        }
+      ],
+      "filename" : "codex-white.svg",
       "idiom" : "universal"
     }
   ],

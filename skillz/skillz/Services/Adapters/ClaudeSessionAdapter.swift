@@ -1,6 +1,6 @@
 import Foundation
 
-enum ClaudeSessionAdapter {
+nonisolated enum ClaudeSessionAdapter {
     static func scan() -> [AgentSession] {
         scanSessionDirectory() + scanProjectTranscripts()
     }

@@ -16,7 +16,7 @@ trap 'rm -f "$input_file"' EXIT HUP INT TERM
 cat >"$input_file" 2>/dev/null || true
 
 case "$platform" in
-  cursor|claudeCode|codex) ;;
+  cursor|claudeCode|codex|hermes|pi|openClaw) ;;
   *) exit 0 ;;
 esac
 

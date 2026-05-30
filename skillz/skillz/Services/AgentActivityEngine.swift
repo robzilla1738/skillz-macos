@@ -1,6 +1,11 @@
 import Foundation
 
-enum AgentActivityEngine {
+nonisolated enum AgentActivityEngine {
+    enum DiscoveryScope: Sendable {
+        case fast
+        case full
+    }
+
     static func merge(
         hookSessions: [AgentSession],
         fileSessions: [AgentSession],
@@ -21,7 +26,7 @@ enum AgentActivityEngine {
             }
         }
 
-        return byID.values
+        return collapseDuplicateSessions(Array(byID.values))
             .map { applyStaleRules($0, now: now) }
             .filter { session in
                 if session.state != .unknown { return true }
@@ -35,21 +40,27 @@ enum AgentActivityEngine {
             }
     }
 
-    static func discover(now: Date = Date()) -> [AgentSession] {
+    static func discover(scope: DiscoveryScope = .full, now: Date = Date()) -> [AgentSession] {
         let hookSessions = AgentStateFile.load()
-        let fileSessions =
-            ClaudeSessionAdapter.scan()
-            + CodexSessionAdapter.scan()
-            + CursorSessionAdapter.scan()
-            + ShellAgentProcessAdapter.scan()
+        let fileSessions: [AgentSession]
+        switch scope {
+        case .fast:
+            fileSessions = ShellAgentProcessAdapter.scan()
+        case .full:
+            fileSessions =
+                ClaudeSessionAdapter.scan()
+                + CodexSessionAdapter.scan()
+                + CursorSessionAdapter.scan()
+                + ShellAgentProcessAdapter.scan()
+        }
         return merge(hookSessions: hookSessions, fileSessions: fileSessions, now: now)
     }
 
     private static func mergePair(existing: AgentSession, incoming: AgentSession) -> AgentSession {
         let state: AgentActivityState
-        if incoming.source == .hooks {
+        if incoming.source == .hooks && incoming.state == .needsInput {
             state = incoming.state
-        } else if existing.source == .hooks {
+        } else if existing.source == .hooks && existing.state == .needsInput {
             state = existing.state
         } else {
             state = incoming.state.priority >= existing.state.priority ? incoming.state : existing.state
@@ -60,12 +71,108 @@ enum AgentActivityEngine {
             id: existing.id,
             platform: existing.platform,
             state: state,
-            title: incoming.title.isEmpty ? existing.title : incoming.title,
+            title: preferredTitle(existing: existing, incoming: incoming),
             cwd: incoming.cwd ?? existing.cwd,
             pid: incoming.pid ?? existing.pid,
             updatedAt: updatedAt,
             source: .merged
         )
+    }
+
+    private static func collapseDuplicateSessions(_ sessions: [AgentSession]) -> [AgentSession] {
+        let platformsWithBetterSignals = Set(
+            sessions
+                .filter { $0.source != .process }
+                .map(\.platform)
+        )
+        var byKey: [String: AgentSession] = [:]
+        var passthrough: [AgentSession] = []
+
+        for session in sessions.sorted(by: sessionIdentitySort) {
+            if session.source == .process,
+               canonicalCWD(session.cwd) == nil,
+               platformsWithBetterSignals.contains(session.platform) {
+                continue
+            }
+
+            guard let key = duplicateKey(for: session) else {
+                passthrough.append(session)
+                continue
+            }
+
+            if let existing = byKey[key] {
+                byKey[key] = mergePair(existing: existing, incoming: session)
+            } else {
+                byKey[key] = session
+            }
+        }
+
+        return passthrough + Array(byKey.values)
+    }
+
+    private static func sessionIdentitySort(_ lhs: AgentSession, _ rhs: AgentSession) -> Bool {
+        if identityRank(lhs.source) != identityRank(rhs.source) {
+            return identityRank(lhs.source) > identityRank(rhs.source)
+        }
+        return lhs.updatedAt > rhs.updatedAt
+    }
+
+    private static func identityRank(_ source: AgentSessionSource) -> Int {
+        switch source {
+        case .hooks: return 3
+        case .fileWatch, .merged: return 2
+        case .process: return 1
+        }
+    }
+
+    private static func duplicateKey(for session: AgentSession) -> String? {
+        if let cwd = canonicalCWD(session.cwd) {
+            return "\(session.platform.rawValue):cwd:\(cwd)"
+        }
+
+        if session.source == .process {
+            return "\(session.platform.rawValue):process-fallback"
+        }
+
+        return nil
+    }
+
+    private static func canonicalCWD(_ cwd: String?) -> String? {
+        guard let cwd,
+              !cwd.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return nil }
+
+        return (cwd as NSString)
+            .standardizingPath
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    private static func preferredTitle(existing: AgentSession, incoming: AgentSession) -> String {
+        if titleScore(incoming) > titleScore(existing) {
+            return incoming.title
+        }
+        if titleScore(existing) > 0 {
+            return existing.title
+        }
+        return incoming.title
+    }
+
+    private static func titleScore(_ session: AgentSession) -> Int {
+        let title = session.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return 0 }
+
+        var score = 1
+        if title != session.platform.displayName && title != "Session active" {
+            score += 2
+        }
+        if session.source != .process {
+            score += 1
+        }
+        if let cwd = session.cwd,
+           title == (cwd as NSString).lastPathComponent {
+            score += 1
+        }
+        return score
     }
 
     static func applyStaleRules(_ session: AgentSession, now: Date) -> AgentSession {

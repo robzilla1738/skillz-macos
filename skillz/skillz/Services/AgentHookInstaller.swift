@@ -38,7 +38,7 @@ nonisolated struct AgentHookStatus: Equatable, Sendable {
     let detail: String
 }
 
-enum AgentHookInstaller {
+nonisolated enum AgentHookInstaller {
     private static let skillzMarker = "skillz-agent-notify.sh"
     private static let integrationVersion = "2"
 

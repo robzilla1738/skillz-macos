@@ -17,7 +17,7 @@ nonisolated enum AgentPlatform: String, CaseIterable, Identifiable, Codable, Sen
         case .codex: return "Codex"
         case .hermes: return "Hermes"
         case .pi: return "Pi"
-        case .openClaw: return "OpenClaw"
+        case .openClaw: return "OpenCode"
         }
     }
 
@@ -32,13 +32,15 @@ nonisolated enum AgentPlatform: String, CaseIterable, Identifiable, Codable, Sen
         }
     }
 
-    /// Lobe Icons asset name for notch UI (cursor, claudecode, codex/OpenAI).
+    /// Brand icon asset name for notch and platform UI.
     var brandIconAssetName: String? {
         switch self {
         case .cursor: return "PlatformIconCursor"
         case .claudeCode: return "PlatformIconClaudeCode"
         case .codex: return "PlatformIconCodex"
-        default: return nil
+        case .hermes: return "PlatformIconHermes"
+        case .pi: return "PlatformIconPi"
+        case .openClaw: return "PlatformIconOpenCode"
         }
     }
 

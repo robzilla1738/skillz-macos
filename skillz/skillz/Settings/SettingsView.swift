@@ -1,42 +1,88 @@
 import SwiftUI
 
+private enum SettingsTab: String, CaseIterable, Identifiable {
+    case general
+    case sources
+    case agents
+    case editor
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .general: return "General"
+        case .sources: return "Sources"
+        case .agents: return "Agents"
+        case .editor: return "Editor"
+        }
+    }
+}
+
 struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var store: CatalogStore
     @ObservedObject var agentStore: AgentSessionStore
     @ObservedObject var hookStore: AgentHookStore
     var onNotchEnabledChange: (Bool) -> Void
+    @State private var selectedTab: SettingsTab = .general
 
     var body: some View {
-        TabView {
+        VStack(spacing: 0) {
+            settingsTabBar
+
+            Divider()
+
+            selectedSettingsPane
+                .padding(SkillzSpacing.xl)
+        }
+        .background(Color.skillzCanvas)
+        .frame(width: 640, height: 560)
+    }
+
+    private var settingsTabBar: some View {
+        HStack(spacing: SkillzSpacing.sm) {
+            ForEach(SettingsTab.allCases) { tab in
+                Button {
+                    selectedTab = tab
+                } label: {
+                    Text(tab.title)
+                        .font(SkillzTypography.body)
+                        .foregroundStyle(selectedTab == tab ? Color.skillzEmphasis : Color.skillzMuted)
+                        .frame(minWidth: 76)
+                        .padding(.horizontal, SkillzSpacing.sm)
+                        .frame(height: 32)
+                        .background {
+                            RoundedRectangle(cornerRadius: SkillzSpacing.sm, style: .continuous)
+                                .fill(selectedTab == tab ? Color.skillzSelection.opacity(0.58) : Color.clear)
+                        }
+                        .contentShape(RoundedRectangle(cornerRadius: SkillzSpacing.sm, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .center)
+        .padding(.horizontal, SkillzSpacing.xl)
+        .padding(.vertical, SkillzSpacing.md)
+    }
+
+    @ViewBuilder
+    private var selectedSettingsPane: some View {
+        switch selectedTab {
+        case .general:
             generalSettings
-                .tabItem {
-                    Text("General")
-                }
-
+        case .sources:
             sourcesSettings
-                .tabItem {
-                    Text("Sources")
-                }
-
+        case .agents:
             AgentHooksSettingsSection(
                 settings: settings,
                 agentStore: agentStore,
                 hookStore: hookStore,
                 onNotchEnabledChange: onNotchEnabledChange
             )
-            .tabItem {
-                Text("Agents")
-            }
-
+        case .editor:
             editorSettings
-                .tabItem {
-                    Text("Editor")
-                }
         }
-        .padding(SkillzSpacing.xl)
-        .background(Color.skillzCanvas)
-        .frame(width: 640, height: 560)
     }
 
     private var generalSettings: some View {

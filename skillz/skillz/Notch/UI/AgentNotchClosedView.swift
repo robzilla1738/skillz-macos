@@ -2,37 +2,34 @@ import SwiftUI
 
 struct AgentNotchClosedView: View {
     let summary: AgentActivitySummary
+    var onReveal: (AgentSession) -> Void
 
     private var visibleSessions: [AgentSession] {
-        let sessions = summary.notchClosedSessions
-        return sessions.isEmpty ? AgentPlatform.trackedAgentPlatforms.map { platform in
-            AgentSession(
-                id: "inactive:\(platform.id)",
-                platform: platform,
-                state: .unknown,
-                title: platform.displayName,
-                cwd: nil,
-                pid: nil,
-                updatedAt: .distantPast,
-                source: .fileWatch
-            )
-        } : Array(sessions.prefix(6))
+        Array(summary.notchClosedSessions.prefix(6))
     }
 
     var body: some View {
         HStack(spacing: 10) {
             ForEach(visibleSessions) { session in
-                sessionGlyph(session)
+                Button {
+                    onReveal(session)
+                } label: {
+                    sessionGlyph(session)
+                }
+                .buttonStyle(.plain)
+                .help("Open \(session.platform.displayName) session")
             }
 
             if overflowCount > 0 {
-                Text("+\(overflowCount)")
+                Image(systemName: "ellipsis")
                     .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(NotchMonochromeStyle.muted)
+                    .accessibilityLabel("\(overflowCount) more active sessions")
             }
         }
         .padding(.horizontal, 14)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.interactiveSpring(response: 0.34, dampingFraction: 0.88), value: visibleSessions.map(\.id))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(closedAccessibilityLabel)
     }

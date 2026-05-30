@@ -14,7 +14,7 @@ struct SkillDetailsSheet: View {
     @State private var isSaving = false
 
     private var canModify: Bool {
-        SkillFileService.canModify(skill)
+        SkillFileService.canEditMetadata(skill)
     }
 
     var body: some View {
@@ -23,7 +23,7 @@ struct SkillDetailsSheet: View {
                 .skillzHeadlineStyle()
 
             if !canModify {
-                Text(SkillFileService.modificationBlockedReason(skill))
+                Text(SkillFileService.metadataBlockedReason(skill))
                     .skillzBodySecondaryStyle()
             }
 

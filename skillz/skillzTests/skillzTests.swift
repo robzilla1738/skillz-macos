@@ -136,6 +136,88 @@ struct skillzTests {
         #expect(merged[0].state == .needsInput)
     }
 
+    @Test func agentActivityEngineCollapsesProcessAndTranscriptForSameWorkspace() {
+        let transcript = AgentSession(
+            id: "codex:rollout:abc",
+            platform: .codex,
+            state: .working,
+            title: "skillz-macos",
+            cwd: "/tmp/skillz-macos",
+            pid: nil,
+            updatedAt: Date().addingTimeInterval(-3),
+            source: .fileWatch
+        )
+        let process = AgentSession(
+            id: "codex:process:42",
+            platform: .codex,
+            state: .working,
+            title: "Codex",
+            cwd: "/tmp/skillz-macos",
+            pid: 42,
+            updatedAt: Date(),
+            source: .process
+        )
+
+        let merged = AgentActivityEngine.merge(hookSessions: [], fileSessions: [transcript, process])
+        #expect(merged.count == 1)
+        #expect(merged[0].title == "skillz-macos")
+        #expect(merged[0].pid == 42)
+    }
+
+    @Test func agentActivityEngineDropsPidOnlyProcessWhenBetterPlatformSignalExists() {
+        let hook = AgentSession(
+            id: "codex:hook:abc",
+            platform: .codex,
+            state: .working,
+            title: "Session active",
+            cwd: nil,
+            pid: nil,
+            updatedAt: Date(),
+            source: .hooks
+        )
+        let process = AgentSession(
+            id: "codex:process:42",
+            platform: .codex,
+            state: .working,
+            title: "Codex",
+            cwd: nil,
+            pid: 42,
+            updatedAt: Date(),
+            source: .process
+        )
+
+        let merged = AgentActivityEngine.merge(hookSessions: [hook], fileSessions: [process])
+        #expect(merged.count == 1)
+        #expect(merged[0].id == "codex:hook:abc")
+    }
+
+    @Test func agentActivityEngineLiveProcessUpgradesIdleHookForSameWorkspace() {
+        let hook = AgentSession(
+            id: "codex:hook:abc",
+            platform: .codex,
+            state: .idle,
+            title: "skillz-macos",
+            cwd: "/tmp/skillz-macos",
+            pid: nil,
+            updatedAt: Date(),
+            source: .hooks
+        )
+        let process = AgentSession(
+            id: "codex:process:42",
+            platform: .codex,
+            state: .working,
+            title: "skillz-macos",
+            cwd: "/tmp/skillz-macos",
+            pid: Int(ProcessInfo.processInfo.processIdentifier),
+            updatedAt: Date(),
+            source: .process
+        )
+
+        let merged = AgentActivityEngine.merge(hookSessions: [hook], fileSessions: [process])
+        #expect(merged.count == 1)
+        #expect(merged[0].state == .working)
+    }
+
     @Test func agentActivityEngineMarksStaleWorkingAsUnknown() {
         let stale = AgentSession(
             id: "codex:1",
@@ -192,6 +274,28 @@ struct skillzTests {
         let workingSummary = AgentActivityEngine.summary(for: [sessions[0]])
         #expect(!workingSummary.hasNotchAttention)
         #expect(workingSummary.notchDisplaySessions.map(\.id) == ["cursor-working"])
+    }
+
+    @Test func shellProcessRunnerCapturesOutputAndTimesOut() {
+        let echo = ShellProcessRunner.run(
+            executablePath: "/bin/echo",
+            arguments: ["skillz-process-runner"],
+            timeout: 1
+        )
+        #expect(echo?.didTimeOut == false)
+        #expect(echo?.terminationStatus == 0)
+        #expect(echo?.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines) == "skillz-process-runner")
+
+        let slow = ShellProcessRunner.run(
+            executablePath: "/bin/sh",
+            arguments: ["-c", "sleep 2; echo late"],
+            timeout: 0.05
+        )
+        #expect(slow?.didTimeOut == true)
+    }
+
+    @Test func appHostedTestsDisableStartupSideEffects() {
+        #expect(SkillzRuntime.isRunningAppHostedTests)
     }
 
     @Test func agentHookInstallerNotifyCommandIncludesScript() {
@@ -454,6 +558,67 @@ struct skillzTests {
         try? FileManager.default.removeItem(at: tempRoot)
     }
 
+    @Test func skillFileServiceEditsPluginEmbeddedMetadataAndAllowsWritableFolderOperations() throws {
+        let tempRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("skillz-plugin-metadata-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+
+        let skillDir = tempRoot.appendingPathComponent("plugin-skill", isDirectory: true)
+        try FileManager.default.createDirectory(at: skillDir, withIntermediateDirectories: true)
+        let skillMD = skillDir.appendingPathComponent("SKILL.md")
+        try """
+        ---
+        name: plugin-skill
+        description: Old.
+        ---
+        # Hello
+        """.write(to: skillMD, atomically: true, encoding: .utf8)
+
+        let item = SkillItem(
+            id: SkillItem.makeID(platform: .codex, path: skillMD),
+            platform: .codex,
+            skillPath: skillMD,
+            rootDirectory: skillDir,
+            displayName: "plugin-skill",
+            description: "Old.",
+            version: nil,
+            isBuiltIn: false,
+            isPluginEmbedded: true,
+            frontmatter: SkillFrontmatter(name: "plugin-skill", description: "Old."),
+            modifiedAt: nil,
+            alsoAvailableOn: []
+        )
+
+        #expect(SkillFileService.canEditMetadata(item))
+        try SkillFileService.updateMetadata(item, name: "plugin-skill", description: "Updated.", version: "1.2.3")
+        let (frontmatter, _) = FrontmatterParser.parse(from: try String(contentsOf: skillMD, encoding: .utf8))
+        #expect(frontmatter.description == "Updated.")
+        #expect(frontmatter.version == "1.2.3")
+
+        #expect(SkillFileService.canModify(item))
+        let renamedRoot = try SkillFileService.renameSkill(item, newFolderName: "renamed")
+        #expect(FileManager.default.fileExists(atPath: renamedRoot.appendingPathComponent("SKILL.md").path))
+
+        let renamedItem = SkillItem(
+            id: SkillItem.makeID(platform: .codex, path: renamedRoot.appendingPathComponent("SKILL.md")),
+            platform: .codex,
+            skillPath: renamedRoot.appendingPathComponent("SKILL.md"),
+            rootDirectory: renamedRoot,
+            displayName: "renamed",
+            description: "Updated.",
+            version: "1.2.3",
+            isBuiltIn: false,
+            isPluginEmbedded: true,
+            frontmatter: SkillFrontmatter(name: "renamed", description: "Updated.", version: "1.2.3"),
+            modifiedAt: nil,
+            alsoAvailableOn: []
+        )
+        try SkillFileService.deleteSkill(renamedItem)
+        #expect(!FileManager.default.fileExists(atPath: renamedRoot.path))
+
+        try? FileManager.default.removeItem(at: tempRoot)
+    }
+
     @Test func notchLayoutCalculatorHeightGrowsWithRowsAndHooks() {
         let base = NotchLayoutCalculator.openLayout(
             rowCount: 1,
@@ -496,6 +661,41 @@ struct skillzTests {
         #expect(narrow.width >= NotchLayoutCalculator.minOpenWidth)
         #expect(wide.width <= NotchLayoutCalculator.maxOpenWidth)
         #expect(wide.width >= narrow.width)
+    }
+
+    @MainActor
+    @Test func notchClosedStateDoesNotRelayoutForBackgroundRows() {
+        let model = NotchViewModel()
+        var layoutChangeCount = 0
+        model.onLayoutChange = {
+            layoutChangeCount += 1
+        }
+
+        model.state = .closed
+        model.updateOpenLayout(rowCount: 4, showsHooksPrompt: true)
+
+        #expect(layoutChangeCount == 0)
+    }
+
+    @MainActor
+    @Test func notchTransientOpenDoesNotStayPinned() async {
+        let model = NotchViewModel()
+
+        model.openTransient(duration: 0.01)
+        #expect(model.isPinnedOpen == false)
+        if case .open = model.state {
+            // Expected immediately after opening.
+        } else {
+            Issue.record("Expected transient notch to open immediately")
+        }
+
+        try? await Task.sleep(for: .milliseconds(40))
+        #expect(model.isPinnedOpen == false)
+        #expect(model.state == .closed)
+    }
+
+    @Test func trackedAgentPlatformsIncludeAllSupportedTools() {
+        #expect(AgentPlatform.trackedAgentPlatforms == [.cursor, .claudeCode, .codex, .hermes, .pi, .openClaw])
     }
 
     private static func makeSkill(name: String, platform: AgentPlatform) -> SkillItem {

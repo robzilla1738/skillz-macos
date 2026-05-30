@@ -47,7 +47,7 @@ final class NotchViewModel: ObservableObject {
         layoutShowsHooksPrompt = showsHooksPrompt
         let previous = openLayout
         applyOpenLayout()
-        if openLayout != previous {
+        if openLayout != previous, usesOpenLayout {
             onLayoutChange?()
         }
     }
@@ -99,6 +99,23 @@ final class NotchViewModel: ObservableObject {
         dismissTask?.cancel()
         dismissTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(3.2))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self, !self.isPinnedOpen else { return }
+                self.closeIfTransient()
+            }
+        }
+    }
+
+    func cancelPendingDismiss() {
+        dismissTask?.cancel()
+        dismissTask = nil
+    }
+
+    func openTransient(duration: TimeInterval = 2.4) {
+        open(pinned: false)
+        dismissTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(duration))
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 guard let self, !self.isPinnedOpen else { return }
@@ -208,6 +225,13 @@ final class NotchViewModel: ObservableObject {
         switch state {
         case .open, .peeking: return true
         default: return false
+        }
+    }
+
+    private var usesOpenLayout: Bool {
+        switch state {
+        case .open, .peeking: return true
+        case .closed, .hidden: return false
         }
     }
 }

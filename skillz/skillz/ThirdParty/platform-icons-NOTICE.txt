@@ -1,0 +1,7 @@
+Platform icon sources:
+
+- Cursor: Lobe Icons asset, see lobe-icons-LICENSE.txt.
+- Claude Code, Codex, Hermes, and OpenCode: project-supplied SVG assets.
+- Pi: official Pi mark derived from https://pi.dev/favicon.svg.
+
+Platform names and logos are trademarks of their respective owners.

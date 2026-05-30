@@ -30,7 +30,7 @@ struct PlatformSourceStatus: Identifiable, Equatable, Sendable {
         case .pi:
             return "Install Pi to populate ~/.pi/agent/skills"
         case .openClaw:
-            return "Install OpenClaw to populate ~/.openclaw/skills"
+            return "Install OpenCode to populate local skills"
         }
     }
 }

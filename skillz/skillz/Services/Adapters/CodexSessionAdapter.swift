@@ -1,6 +1,6 @@
 import Foundation
 
-enum CodexSessionAdapter {
+nonisolated enum CodexSessionAdapter {
     static func scan() -> [AgentSession] {
         var sessions: [AgentSession] = []
         sessions += scanChatProcesses()
