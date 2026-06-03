@@ -14,6 +14,32 @@ This repository is ready for public source use and Debug verification. Productio
 - Xcode with the macOS 26.2 SDK or newer
 - No app sandbox. Skills reads local agent folders such as `~/.cursor`, `~/.claude`, `~/.codex`, `~/.hermes`, `~/.pi`, `~/.openclaw`, and shared `~/.agents/skills`.
 
+## Install
+
+Skills ships as a signed, notarized DMG on the [Releases](https://github.com/robzilla1738/skillz-macos/releases) page (macOS 26.2+).
+
+### One-line install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/robzilla1738/skillz-macos/main/scripts/install.sh | bash
+```
+
+This downloads the latest release, verifies its Developer ID signature, installs `Skills.app` to `/Applications`, and launches it. On first run, leave **Install or repair hooks automatically** enabled and click **Get Started** — Skills sets up live-activity hooks for every supported tool it detects.
+
+### Ask your coding agent
+
+Paste this to Claude Code, Cursor, Codex, or any agent with shell access:
+
+> Install the Skills macOS app for me. Run:
+> `curl -fsSL https://raw.githubusercontent.com/robzilla1738/skillz-macos/main/scripts/install.sh | bash`
+> Then confirm `Skills.app` is in `/Applications` and running. Skills configures
+> the agent hooks itself on first launch, so just tell me to click "Get Started"
+> in its setup window to finish wiring up my tools.
+
+### Manual
+
+Download the latest `Skills-macOS-vX.Y.Z.dmg` from [Releases](https://github.com/robzilla1738/skillz-macos/releases), open it, and drag **Skills** into **Applications**.
+
 ## Build
 
 From the Xcode project directory:

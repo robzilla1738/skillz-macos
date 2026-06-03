@@ -38,5 +38,11 @@ enum SkillzWindowMetrics {
     /// space above the card; this trims that surplus so the card's top margin matches
     /// its side/bottom margins. The top bar renders above the split view (zIndex) so
     /// any shadow above the divider is masked and the hairline stays crisp.
-    static let sidebarTopInsetPull: CGFloat = 14
+    static let sidebarTopInsetPull: CGFloat = 18
+
+    /// Top inset for the flat content/detail column headers ("All Items", the skill
+    /// name, etc.). These columns have no floating card to cushion them from the
+    /// top-bar divider, so they need a larger top gap than `SkillzSpacing.md` to clear
+    /// the divider and align with the sidebar's title. Bottom padding stays `.md`.
+    static let columnHeaderTopInset: CGFloat = 24
 }

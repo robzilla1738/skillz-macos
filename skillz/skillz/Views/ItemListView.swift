@@ -64,7 +64,8 @@ struct ItemListView: View {
                 Spacer()
             }
             .padding(.horizontal, SkillzSpacing.lg)
-            .padding(.vertical, SkillzSpacing.md)
+            .padding(.top, SkillzWindowMetrics.columnHeaderTopInset)
+            .padding(.bottom, SkillzSpacing.md)
             .background(Color.skillzCanvas)
         }
     }

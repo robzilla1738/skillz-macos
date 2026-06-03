@@ -25,7 +25,8 @@ struct MCPDetailView: View {
                 Spacer()
             }
             .padding(.horizontal, SkillzSpacing.xl)
-            .padding(.vertical, SkillzSpacing.md)
+            .padding(.top, SkillzWindowMetrics.columnHeaderTopInset)
+            .padding(.bottom, SkillzSpacing.md)
             .background(Color.skillzCanvas)
         }
     }
