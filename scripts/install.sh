@@ -75,7 +75,6 @@ cat <<'DONE'
 
 ✓ Skills is installed in /Applications.
 
-On first run, leave "Install or repair hooks automatically" enabled and click
-"Get Started" — Skills sets up live-activity hooks for every supported agent
-tool it detects (Cursor, Claude Code, Codex) and starts watching the rest.
+On first run, click "Get Started" and choose the local tool folders Skills
+should scan.
 DONE

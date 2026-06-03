@@ -1,8 +1,8 @@
 # Skills
 
-Skills is a macOS app for browsing, editing, and managing local agent harness assets: skills, MCP server configs, and plugins across Cursor, Claude Code, Codex, Hermes, Pi, and OpenCode.
+Skills is a macOS app for browsing, editing, and managing local AI tool assets: skills, MCP server configs, and plugins across Cursor, Claude Code, Codex, Hermes, Pi, and OpenCode.
 
-It also includes a menu bar monitor for live Cursor, Claude Code, Codex, Hermes, Pi, and OpenCode activity. Cursor, Claude Code, and Codex support precise waiting-state hooks; Hermes, Pi, and OpenCode use process detection until stable hook configs are available.
+It gives you one place to inspect and update the files these tools scatter across hidden folders, without making you remember every config path.
 
 ## Status
 
@@ -24,7 +24,7 @@ Skills ships as a signed, notarized DMG on the [Releases](https://github.com/rob
 curl -fsSL https://raw.githubusercontent.com/robzilla1738/skillz-macos/main/scripts/install.sh | bash
 ```
 
-This downloads the latest release, verifies its Developer ID signature, installs `Skills.app` to `/Applications`, and launches it. On first run, leave **Install or repair hooks automatically** enabled and click **Get Started** — Skills sets up live-activity hooks for every supported tool it detects.
+This downloads the latest release, verifies its Developer ID signature, installs `Skills.app` to `/Applications`, and launches it. On first run, click **Get Started** and choose the sources you want Skills to scan.
 
 ### Ask your coding agent
 
@@ -32,9 +32,9 @@ Paste this to Claude Code, Cursor, Codex, or any agent with shell access:
 
 > Install the Skills macOS app for me. Run:
 > `curl -fsSL https://raw.githubusercontent.com/robzilla1738/skillz-macos/main/scripts/install.sh | bash`
-> Then confirm `Skills.app` is in `/Applications` and running. Skills configures
-> the agent hooks itself on first launch, so just tell me to click "Get Started"
-> in its setup window to finish wiring up my tools.
+> Then confirm `Skills.app` is in `/Applications` and running. Tell me to click
+> "Get Started" in the setup window so I can pick the local tool folders Skills
+> should scan.
 
 ### Manual
 
@@ -52,24 +52,15 @@ xcodebuild -scheme skillz -destination 'platform=macOS' -only-testing:skillzTest
 
 The shared scheme is checked in at `skillz/skillz.xcodeproj/xcshareddata/xcschemes/skillz.xcscheme`.
 
-## Agent Detection
+## Source Discovery
 
 On launch, Skills:
 
-- creates its application support state file if needed
-- detects existing agent homes, skill sources, config files, shared `~/.agents/skills`, and known CLI locations without treating shared skill folders as installed apps
-- after onboarding, installs or repairs the bundled notify hook script at `~/.skillz/bin/skillz-agent-notify.sh` when automatic hook repair is enabled
-- merges Skills hooks into existing Cursor, Claude Code, and Codex hook configs without replacing existing hooks
-- enables Codex hooks in `~/.codex/config.toml` when installing Codex hooks
-- watches the Skills state file plus known Cursor, Claude Code, and Codex session directories
-- uses process detection for Hermes, Pi, OpenCode, and fallback active-session detection
-- polls every five seconds as a fallback
-
-The state file lives at:
-
-```text
-~/Library/Application Support/Skillz/agent-state.json
-```
+- detects existing tool homes, skill sources, config files, shared `~/.agents/skills`, and known CLI locations
+- keeps shared skill folders separate from install signals, so an old empty home folder does not look like a real setup
+- scans Cursor `mcp.json`, Claude Code `.mcp.json`, and Codex `config.toml`
+- finds plugin metadata where Cursor, Claude Code, and Codex expose it
+- watches catalog paths for changes and refreshes when the app becomes active
 
 ## Updates
 
