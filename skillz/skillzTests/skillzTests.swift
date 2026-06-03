@@ -376,6 +376,9 @@ struct skillzTests {
             try FileManager.default.createDirectory(at: codex, withIntermediateDirectories: true)
             try FileManager.default.createDirectory(at: claude, withIntermediateDirectories: true)
             try FileManager.default.createDirectory(at: cursor, withIntermediateDirectories: true)
+            // A real config file makes Cursor a genuine install signal (a bare home dir
+            // no longer counts — see platformSourceDetectorBareHomeIsNotAnInstallSignal).
+            try "{}".write(to: cursor.appendingPathComponent("mcp.json"), atomically: true, encoding: .utf8)
 
             try """
             {
@@ -427,6 +430,72 @@ struct skillzTests {
         }
     }
 
+    @Test func agentHookAutoInstallDoesNotWriteFilesWithoutDetectedSupportedTools() throws {
+        try Self.withTemporaryAgentEnvironment { _ in
+            let statuses = AgentHookInstaller.autoInstallDetectedHooks()
+            #expect(statuses.allSatisfy { $0.status == .unsupported })
+            #expect(!FileManager.default.fileExists(atPath: AgentPaths.notifyScriptInstalledURL.path))
+            #expect(!FileManager.default.fileExists(atPath: AgentPlatform.claudeCode.homeDirectory.path))
+            #expect(!FileManager.default.fileExists(atPath: AgentPlatform.codex.homeDirectory.path))
+            #expect(!FileManager.default.fileExists(atPath: AgentPlatform.cursor.homeDirectory.path))
+        }
+    }
+
+    @Test func agentHookAutoInstallUsesExecutableDetectionForFreshDownloads() throws {
+        try Self.withTemporaryAgentEnvironment { root in
+            try Self.writeExecutable(
+                at: root.appendingPathComponent(".local/bin/claude"),
+                content: "#!/bin/sh\n"
+            )
+
+            let statuses = AgentHookInstaller.autoInstallDetectedHooks()
+            #expect(statuses.contains { $0.platform == .claudeCode && $0.status == .installed })
+            #expect(statuses.contains { $0.platform == .codex && $0.status == .unsupported })
+            #expect(statuses.contains { $0.platform == .cursor && $0.status == .unsupported })
+            #expect(FileManager.default.fileExists(atPath: AgentPaths.notifyScriptInstalledURL.path))
+            #expect(Self.countSkillzHooks(
+                in: AgentPlatform.claudeCode.homeDirectory.appendingPathComponent("settings.json"),
+                event: "Stop"
+            ) == 1)
+        }
+    }
+
+    @Test func agentHookInstallerDoesNotOverwriteInvalidExistingConfig() throws {
+        try Self.withTemporaryAgentEnvironment { root in
+            let claude = root.appendingPathComponent(".claude", isDirectory: true)
+            try FileManager.default.createDirectory(at: claude, withIntermediateDirectories: true)
+            let settings = claude.appendingPathComponent("settings.json")
+            try "{ invalid json".write(to: settings, atomically: true, encoding: .utf8)
+
+            let statuses = AgentHookInstaller.autoInstallDetectedHooks()
+            #expect(statuses.contains { $0.platform == .claudeCode && $0.status == .needsRepair })
+            #expect(try String(contentsOf: settings, encoding: .utf8) == "{ invalid json")
+        }
+    }
+
+    @Test func startupHookPolicyDefersAutoInstallUntilOnboardingCompletes() {
+        #expect(SkillzStartupHookPolicy.action(
+            hasCompletedOnboarding: false,
+            autoInstallAgentHooks: true,
+            initial: true
+        ) == .refreshOnly)
+        #expect(SkillzStartupHookPolicy.action(
+            hasCompletedOnboarding: true,
+            autoInstallAgentHooks: false,
+            initial: true
+        ) == .refreshOnly)
+        #expect(SkillzStartupHookPolicy.action(
+            hasCompletedOnboarding: true,
+            autoInstallAgentHooks: true,
+            initial: true
+        ) == .autoInstall)
+        #expect(SkillzStartupHookPolicy.action(
+            hasCompletedOnboarding: true,
+            autoInstallAgentHooks: true,
+            initial: false
+        ) == .autoRepair)
+    }
+
     @Test func catalogFilterIncludesSharedPlatformAvailability() {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let agentsPath = URL(fileURLWithPath: "\(home)/.agents/skills/shared-skill/SKILL.md")
@@ -460,24 +529,184 @@ struct skillzTests {
         #expect(onCursor.isEmpty)
     }
 
-    @Test func platformSourceDetectorMarksExistingHomeAsDetected() {
-        let snapshot = CatalogSnapshot()
-        let statuses = PlatformSourceDetector.detect(snapshot: snapshot)
+    @Test func platformSourceDetectorEmitsStatusForEveryPlatform() {
+        let statuses = PlatformSourceDetector.detect(snapshot: CatalogSnapshot())
         #expect(statuses.count == AgentPlatform.allCases.count)
+    }
 
-        let cursorStatus = statuses.first { $0.platform == .cursor }
-        #expect(cursorStatus != nil)
-        if FileManager.default.fileExists(atPath: AgentPlatform.cursor.homeDirectory.path) {
-            #expect(cursorStatus?.isDetected == true)
+    @Test func platformSourceDetectorBareHomeIsNotAnInstallSignal() throws {
+        try Self.withTemporaryAgentEnvironment { root in
+            // A bare home directory (no config/skills/executable) — e.g. an empty
+            // ~/.cursor left after uninstalling — must NOT count as installed, or we
+            // would auto-install hooks into a tool the user doesn't actually run.
+            try FileManager.default.createDirectory(
+                at: root.appendingPathComponent(".cursor", isDirectory: true),
+                withIntermediateDirectories: true
+            )
+
+            var statuses = PlatformSourceDetector.detect(snapshot: CatalogSnapshot())
+            #expect(statuses.first { $0.platform == .cursor }?.isDetected == false)
+            #expect(PlatformSourceDetector.isInstalled(platform: .cursor) == false)
+
+            // The home folder still appears as a context signal, just not an install signal.
+            let homeSignal = statuses.first { $0.platform == .cursor }?
+                .detectionSignals.first { $0.url.lastPathComponent == ".cursor" }
+            #expect(homeSignal != nil)
+            #expect(homeSignal?.isInstallSignal == false)
+
+            // A real config file under the home dir flips it to detected.
+            try "{}".write(
+                to: root.appendingPathComponent(".cursor/mcp.json"),
+                atomically: true,
+                encoding: .utf8
+            )
+            statuses = PlatformSourceDetector.detect(snapshot: CatalogSnapshot())
+            #expect(statuses.first { $0.platform == .cursor }?.isDetected == true)
+            #expect(PlatformSourceDetector.isInstalled(platform: .cursor) == true)
         }
     }
 
-    @Test func platformSourceDetectorDefaultNewSkillPlatformsFallback() {
+    @Test func platformSourceDetectorDefaultNewSkillPlatformsEmptyWhenNothingDetected() {
+        // When nothing is detected we must not pre-check absent tools — that would
+        // create skill folders for platforms the user hasn't installed.
         let emptyStatuses = AgentPlatform.allCases.map {
-            PlatformSourceStatus(platform: $0, isDetected: false, scanPaths: [], itemCount: 0)
+            Self.makeSourceStatus(platform: $0, isDetected: false)
         }
         let defaults = PlatformSourceDetector.defaultNewSkillPlatforms(from: emptyStatuses)
-        #expect(defaults == [.cursor, .claudeCode])
+        #expect(defaults.isEmpty)
+    }
+
+    @Test func platformSourceDetectorDefaultNewSkillPlatformsUsesDetectedTools() {
+        let statuses = AgentPlatform.allCases.map {
+            Self.makeSourceStatus(platform: $0, isDetected: $0 == .codex || $0 == .hermes)
+        }
+        let defaults = PlatformSourceDetector.defaultNewSkillPlatforms(from: statuses)
+        #expect(defaults == [.codex, .hermes])
+    }
+
+    @Test func platformSourceDetectorFindsHomesSharedSkillsAndExecutables() throws {
+        try Self.withTemporaryAgentEnvironment { root in
+            let cursorConfig = root.appendingPathComponent(".cursor/mcp.json")
+            try FileManager.default.createDirectory(
+                at: cursorConfig.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try "{}".write(to: cursorConfig, atomically: true, encoding: .utf8)
+
+            let claudeSkill = root.appendingPathComponent(".claude/skills/reviewer/SKILL.md")
+            try Self.writeSkill(at: claudeSkill, name: "reviewer")
+
+            let sharedSkill = root.appendingPathComponent(".agents/skills/shared/SKILL.md")
+            try Self.writeSkill(at: sharedSkill, name: "shared")
+
+            try FileManager.default.createDirectory(
+                at: root.appendingPathComponent(".codex", isDirectory: true),
+                withIntermediateDirectories: true
+            )
+            try "[features]\n".write(
+                to: root.appendingPathComponent(".codex/config.toml"),
+                atomically: true,
+                encoding: .utf8
+            )
+
+            try Self.writeExecutable(
+                at: root.appendingPathComponent(".local/bin/hermes"),
+                content: "#!/bin/sh\n"
+            )
+            try Self.writeSkill(
+                at: root.appendingPathComponent(".pi/agent/skills/pi-skill/SKILL.md"),
+                name: "pi-skill"
+            )
+            try Self.writeExecutable(
+                at: root.appendingPathComponent(".local/bin/open-code"),
+                content: "#!/bin/sh\n"
+            )
+
+            let statuses = PlatformSourceDetector.detect(snapshot: CatalogSnapshot())
+            #expect(statuses.first { $0.platform == .cursor }?.isDetected == true)
+            #expect(statuses.first { $0.platform == .claudeCode }?.isDetected == true)
+            #expect(statuses.first { $0.platform == .codex }?.isDetected == true)
+            #expect(statuses.first { $0.platform == .hermes }?.isDetected == true)
+            #expect(statuses.first { $0.platform == .pi }?.isDetected == true)
+            #expect(statuses.first { $0.platform == .openClaw }?.isDetected == true)
+
+            let hermes = statuses.first { $0.platform == .hermes }
+            #expect(hermes?.detectedSignal?.kind == .executable)
+            #expect(hermes?.detectedSignal?.url.lastPathComponent == "hermes")
+
+            let codex = statuses.first { $0.platform == .codex }
+            #expect(codex?.detectionSignals.contains {
+                $0.url.path.contains("/.agents/skills") && !$0.isInstallSignal
+            } == true)
+        }
+    }
+
+    @Test func platformSourceDetectorSharedSkillsDoNotCreateToolInstallFalsePositives() throws {
+        try Self.withTemporaryAgentEnvironment { root in
+            let sharedSkill = root.appendingPathComponent(".agents/skills/shared/SKILL.md")
+            try Self.writeSkill(at: sharedSkill, name: "shared")
+
+            let statuses = PlatformSourceDetector.detect(snapshot: CatalogSnapshot())
+            for platform in [AgentPlatform.codex, .pi, .openClaw] {
+                let status = statuses.first { $0.platform == platform }
+                #expect(status?.isDetected == false)
+                #expect(status?.detectionSignals.contains {
+                    $0.label == "Shared skill source" && !$0.isInstallSignal
+                } == true)
+            }
+        }
+    }
+
+    @Test func platformSourceDetectorFindsExecutableOnlyOpenCode() throws {
+        try Self.withTemporaryAgentEnvironment { root in
+            try Self.writeExecutable(
+                at: root.appendingPathComponent(".local/bin/opencode"),
+                content: "#!/bin/sh\n"
+            )
+
+            let statuses = PlatformSourceDetector.detect(snapshot: CatalogSnapshot())
+            let openCode = statuses.first { $0.platform == .openClaw }
+            #expect(openCode?.isDetected == true)
+            #expect(openCode?.detectedSignal?.kind == .executable)
+            #expect(openCode?.detectedSignal?.url.lastPathComponent == "opencode")
+        }
+    }
+
+    @Test func codexSessionAdapterDropsDeadChatProcesses() throws {
+        try Self.withTemporaryAgentEnvironment { _ in
+            let file = AgentPaths.codexChatProcessesFile
+            try FileManager.default.createDirectory(
+                at: file.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            let alivePID = Int(ProcessInfo.processInfo.processIdentifier)
+            try """
+            [
+              { "id": "dead", "cwd": "/tmp/dead", "pid": 999999 },
+              { "id": "alive", "cwd": "/tmp/alive", "pid": \(alivePID) }
+            ]
+            """.write(to: file, atomically: true, encoding: .utf8)
+
+            let sessions = CodexSessionAdapter.scan()
+            // A lingering record for a dead process must not keep showing as Working.
+            #expect(sessions.contains { $0.id == "codex:alive" })
+            #expect(!sessions.contains { $0.id == "codex:dead" })
+        }
+    }
+
+    @Test func claudeSessionAdapterUsesRawSessionIDForStableID() throws {
+        try Self.withTemporaryAgentEnvironment { _ in
+            let dir = AgentPaths.claudeSessionsDirectory
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+            // No pid → id derives from sessionId. The raw string must be used (not its
+            // per-launch-randomized hashValue), so the id is stable across app restarts.
+            try """
+            { "sessionId": "abc-123", "cwd": "/tmp/proj", "status": "working" }
+            """.write(to: dir.appendingPathComponent("abc-123.json"), atomically: true, encoding: .utf8)
+
+            let sessions = ClaudeSessionAdapter.scan()
+            #expect(sessions.contains { $0.id == "claude:abc-123" })
+        }
     }
 
     @Test func discoveryRunsWithoutCrashingOnEmptyMachine() {
@@ -748,6 +977,56 @@ struct skillzTests {
         ) == .cursor)
     }
 
+    @Test func shellAgentProcessAdapterMatchesAllSupportedCliTools() {
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "hermes",
+            arguments: "hermes"
+        ) == .hermes)
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "hermes-cli",
+            arguments: "hermes-cli run"
+        ) == .hermes)
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "pi",
+            arguments: "pi"
+        ) == .pi)
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "opencode",
+            arguments: "opencode"
+        ) == .openClaw)
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "open-code",
+            arguments: "open-code"
+        ) == .openClaw)
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "openclaw",
+            arguments: "openclaw"
+        ) == .openClaw)
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "open-claw",
+            arguments: "open-claw"
+        ) == .openClaw)
+    }
+
+    @Test func shellAgentProcessAdapterExcludesKnownNonInteractiveProcesses() {
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "codex",
+            arguments: "codex app-server --listen stdio://"
+        ) == nil)
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "codex",
+            arguments: "/Applications/Codex.app/Contents/MacOS/Codex"
+        ) == nil)
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "claude",
+            arguments: "claude remote-control"
+        ) == nil)
+        #expect(ShellAgentProcessAdapter.matchedPlatform(
+            commandName: "claude",
+            arguments: "claude --print hello"
+        ) == nil)
+    }
+
     @MainActor
     @Test func notchRestsClosedWhetherOrNotThereIsContent() {
         let model = NotchViewModel()
@@ -827,6 +1106,42 @@ struct skillzTests {
         skillCount: 0,
         modifiedAt: nil
     )
+    }
+
+    private static func makeSourceStatus(platform: AgentPlatform, isDetected: Bool) -> PlatformSourceStatus {
+        PlatformSourceStatus(
+            platform: platform,
+            isDetected: isDetected,
+            scanPaths: [],
+            detectionSignals: [],
+            itemCount: 0,
+            hookSupport: platform == .cursor || platform == .claudeCode || platform == .codex
+                ? .preciseWaitingState
+                : .processFallback
+        )
+    }
+
+    private static func writeSkill(at url: URL, name: String) throws {
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try """
+        ---
+        name: \(name)
+        description: Test skill.
+        ---
+        # \(name)
+        """.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    private static func writeExecutable(at url: URL, content: String) throws {
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try content.write(to: url, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
     }
 
     private static func withTemporaryAgentEnvironment(_ body: (URL) throws -> Void) throws {

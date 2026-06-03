@@ -15,10 +15,20 @@ nonisolated enum CodexSessionAdapter {
               !json.isEmpty
         else { return [] }
 
+        // Derive freshness from the file's own mtime rather than "now", so a stale
+        // entry can age out via AgentActivityEngine's stale-working rules instead of
+        // reading as Working forever.
+        let fileModified = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date()
+
         return json.compactMap { entry -> AgentSession? in
             let id = (entry["id"] as? String) ?? (entry["session_id"] as? String) ?? UUID().uuidString
             let cwd = entry["cwd"] as? String
             let pid = entry["pid"] as? Int
+            // Drop entries whose process is gone; a lingering JSON record must not
+            // keep showing a dead session as Working.
+            if let pid, !AgentActivityEngine.isProcessAlive(pid) {
+                return nil
+            }
             let title = cwd.map { ($0 as NSString).lastPathComponent } ?? "Codex"
             return AgentSession(
                 id: "codex:\(id)",
@@ -27,7 +37,7 @@ nonisolated enum CodexSessionAdapter {
                 title: title,
                 cwd: cwd,
                 pid: pid,
-                updatedAt: Date(),
+                updatedAt: fileModified,
                 source: .fileWatch
             )
         }

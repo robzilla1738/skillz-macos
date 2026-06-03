@@ -22,6 +22,11 @@ struct SkillzStartupConfigurator: View {
                 agentStore.reopenWatching()
                 refreshHooksForCurrentSettings()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .skillzOnboardingCompleted)) { _ in
+                guard didConfigure, !SkillzRuntime.isRunningAppHostedTests else { return }
+                refreshHooksForCurrentSettings(initial: true)
+                agentStore.refresh()
+            }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                 agentStore.stop()
             }
@@ -33,15 +38,37 @@ struct SkillzStartupConfigurator: View {
     }
 
     private func refreshHooksForCurrentSettings(initial: Bool = false) {
-        if settings.autoInstallAgentHooks {
-            if initial {
-                hookStore.autoInstallIfNeeded()
-            } else {
-                hookStore.autoRepairIfNeeded()
-            }
-        } else {
+        switch SkillzStartupHookPolicy.action(
+            hasCompletedOnboarding: settings.hasCompletedOnboarding,
+            autoInstallAgentHooks: settings.autoInstallAgentHooks,
+            initial: initial
+        ) {
+        case .refreshOnly:
             hookStore.refresh()
+        case .autoInstall:
+            hookStore.autoInstallIfNeeded()
+        case .autoRepair:
+            hookStore.autoRepairIfNeeded()
         }
+    }
+}
+
+enum SkillzStartupHookAction: Equatable {
+    case refreshOnly
+    case autoInstall
+    case autoRepair
+}
+
+enum SkillzStartupHookPolicy {
+    static func action(
+        hasCompletedOnboarding: Bool,
+        autoInstallAgentHooks: Bool,
+        initial: Bool
+    ) -> SkillzStartupHookAction {
+        guard hasCompletedOnboarding, autoInstallAgentHooks else {
+            return .refreshOnly
+        }
+        return initial ? .autoInstall : .autoRepair
     }
 }
 

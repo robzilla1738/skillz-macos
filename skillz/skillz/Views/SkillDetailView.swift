@@ -8,8 +8,6 @@ struct SkillDetailView: View {
 
     @State private var selectedFileID: String?
     @State private var showSaveFailedAlert = false
-    @State private var pendingFileID: String?
-    @State private var pendingSkillSwitch = false
     @State private var saveError: String?
 
     private var markdownFiles: [SkillMarkdownFile] {
@@ -98,13 +96,11 @@ struct SkillDetailView: View {
         if document.isDirty {
             let saved = document.saveImmediately()
             if !saved {
-                pendingSkillSwitch = true
                 saveError = failureMessage(from: document.saveStatus)
                 showSaveFailedAlert = true
                 return
             }
         }
-        pendingSkillSwitch = false
         selectInitialFile()
     }
 
@@ -197,7 +193,6 @@ struct SkillDetailView: View {
         if document.isDirty {
             let saved = document.saveImmediately()
             if !saved {
-                pendingFileID = fileID
                 selectedFileID = document.fileURL?.path
                 saveError = failureMessage(from: document.saveStatus)
                 showSaveFailedAlert = true
@@ -206,7 +201,6 @@ struct SkillDetailView: View {
         }
         document.load(url: file.url)
         selectedFileID = fileID
-        pendingFileID = nil
     }
 
     private func failureMessage(from status: SaveStatus) -> String {

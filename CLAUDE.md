@@ -50,7 +50,7 @@ xcodebuild -scheme skillz -destination 'platform=macOS' test
 ```
 
 - **Scheme:** `skillz`
-- **Unit tests:** `skillzTests` — 35 `@Test` functions (frontmatter, catalog filter, platform paths, agent engine, process runner, hooks, file service, legacy notch layout/view-model, Cursor GUI exclusion, session dedup, discovery smoke)
+- **Unit tests:** `skillzTests` — 48 `@Test` functions (frontmatter, catalog filter, platform paths, source detection, bare-home-not-detected, agent engine, session-adapter liveness/id stability, process runner, hooks, startup hook policy, file service, legacy notch layout/view-model, process exclusions, session dedup, discovery smoke)
 - **UI tests:** `skillzUITests` — launch/performance (slow); skip unless needed
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) — Debug build + `-only-testing:skillzTests` on `macos-26`
 
@@ -61,9 +61,9 @@ Release checklist is inline in `skillz.entitlements` (Developer ID, archive, not
 ### App entry and scenes
 
 - **`skillzApp`**: `WindowGroup` → `MainWindowView` with hidden titlebar; `MenuBarExtra` → agent menu + **menu-bar glyph** (`SkillzMenuBarIconView` — template `sparkles` SF Symbol the system tints, so it stays visible on light/dark menu bars; the app icon is a near-black mark unusable here); `Settings` scene.
-- **`SkillzStartupConfigurator`**: on first appear, starts `AgentSessionStore`, refreshes/repairs hooks, reopens watching on app activation, and stops monitoring on termination.
+- **`SkillzStartupConfigurator`**: on first appear, starts `AgentSessionStore`, defers initial hook install/repair until onboarding is complete, reopens watching on app activation, and stops monitoring on termination.
 - **`SkillzWindowChromeCleaner`**: AppKit bridge — clears native toolbar/titlebar chrome and hides stray AppKit sidebar-toggle buttons in the title bar.
-- **`OnboardingView`**: first-launch sheet (`settings.hasCompletedOnboarding`); toggles menu-bar waiting count and inspector before catalog use.
+- **`OnboardingView`**: first-launch sheet (`settings.hasCompletedOnboarding`); shows live source/tool detection for all tracked platforms and toggles menu-bar waiting count, inspector, and automatic hook repair before catalog use.
 
 ### Main window (`NavigationSplitView`)
 
@@ -86,7 +86,7 @@ Release checklist is inline in `skillz.entitlements` (Developer ID, archive, not
 
 - **`DiscoveryEngine`** orchestrates `SkillScanner`, `MCPScanner`, `PluginScanner`.
 - **`PlatformSkillPaths`** — per-platform scan roots; shared `~/.agents/skills` for Codex/Pi/OpenCode dedup via `alsoAvailableOn`.
-- **`PlatformSourceDetector`** — which harness folders exist; drives empty states and “New Skill” defaults.
+- **`PlatformSourceDetector`** — centralized platform detection profiles; checks source folders, config files, shared `~/.agents/skills`, and known CLI locations; keeps shared skill sources separate from install signals; drives onboarding, settings, empty states, and “New Skill” defaults.
 - **`CatalogFilter`** — section × platform × search.
 - Live rescan: `FSEventWatcher` + refresh on `NSApplication.didBecomeActive`.
 - **List rows:** `PlatformBadge` + `EnabledBadge` (`.subtle` tag, next to platform pill) for plugins; `subtitleText` fallbacks with `.lineLimit(2, reservesSpace: true)` for uniform row height; `SkillzListRowChrome` animates hover/selection; shared-skill info button when applicable.
@@ -101,18 +101,18 @@ Release checklist is inline in `skillz.entitlements` (Developer ID, archive, not
 
 | Piece | Path / type |
 |-------|-------------|
-| Session store | `AgentSessionStore` — merges file watch + hook state |
+| Session store | `AgentSessionStore` — merges file watch + hook + process state |
 | State file | `~/Library/Application Support/Skillz/agent-state.json` |
 | Adapters | `CursorSessionAdapter`, `ClaudeSessionAdapter`, `CodexSessionAdapter`, `ShellAgentProcessAdapter` |
 | Process runner | `ShellProcessRunner` — drains stdout/stderr concurrently, waits off the main thread, and enforces timeouts |
 | Merge logic | `AgentActivityEngine` (needsInput > working > idle; stale working → unknown; process/transcript/hook dedup) |
 | Menu-bar display | `AgentActivitySummary.notchDisplaySessions` — active/actionable sessions shown in the menu-bar menu |
-| Hooks | `AgentHookInstaller` — patches Claude/Codex/Cursor configs; installs `~/.skillz/bin/skillz-agent-notify.sh` |
+| Hooks | `AgentHookInstaller` — patches Cursor/Claude/Codex configs; installs `~/.skillz/bin/skillz-agent-notify.sh` |
 | Notify script | `Resources/skillz-agent-notify.sh` → updates state file |
 
 **Defaults:** `autoInstallAgentHooks = true`, `showAgentCountInMenuBar = true` (`AppSettings`).
 
-**Tracked platforms in menu bar:** Cursor, Claude Code, Codex, Hermes, Pi, and OpenCode (`AgentPlatform.trackedAgentPlatforms`). The internal enum case is still named `openClaw` for compatibility with existing state/config paths, but the user-facing label and icon are OpenCode.
+**Tracked platforms in menu bar:** Cursor, Claude Code, Codex, Hermes, Pi, and OpenCode (`AgentPlatform.trackedAgentPlatforms`). Cursor, Claude Code, and Codex support precise waiting-state hooks; Hermes, Pi, and OpenCode use process detection. The internal enum case is still named `openClaw` for compatibility with existing state/config paths, but the user-facing label and icon are OpenCode.
 
 ### Legacy notch sources
 
@@ -141,7 +141,7 @@ General (appearance, hide built-in Cursor/Codex skills, inspector) · **Sources*
 | Pi | `~/.pi` | `~/.pi/agent/skills` + `~/.agents/skills` |
 | OpenCode | `~/.openclaw` legacy config | workspace + `~/.openclaw/skills` |
 
-MCP configs: Cursor `mcp.json`, Claude `.mcp.json`, Codex `config.toml`. Plugins: harness-specific cache under each home.
+MCP configs currently scan Cursor `mcp.json`, Claude `.mcp.json`, and Codex `config.toml`. Plugin catalog support scans Cursor, Claude, and Codex plugin caches/configs where implemented.
 
 ## Gotchas
 
@@ -149,10 +149,10 @@ MCP configs: Cursor `mcp.json`, Claude `.mcp.json`, Codex `config.toml`. Plugins
 - **Test PIDs** — avoid `pid: 1` in agent engine tests (treated as stale/system).
 - **Notch layout** — call `updateOpenLayout` when session count / hooks / state change; `NotchShape` must keep vertical side edges at full width.
 - **Sidebar inset pull** — tune only `SkillzWindowMetrics.sidebarTopInsetPull`; keep top bar above the split view (`zIndex`) or scroll-edge shadow bleeds over the hairline.
-- **Platform icons** — SVG assets with transparent backgrounds and `template-rendering-intent`; do not use page-backed PDFs (they render as solid blocks). See `ThirdParty/platform-icons-NOTICE.txt` for sources.
+- **Platform icons** — SVG assets with transparent backgrounds and `template-rendering-intent`; do not use page-backed PDFs (they render as solid blocks), and keep paths CoreSVG-safe. See `ThirdParty/platform-icons-NOTICE.txt` for sources.
 - **Codex icon** — `PlatformIconCodex` is a single `codex.svg`; path arcs must be CoreSVG-safe (minified `a`/`A` commands break rendering in the asset catalog).
 - **Cursor process matching** — `ShellAgentProcessAdapter` excludes the Cursor desktop app and Electron helpers; do not broaden matching or the menu bar will show false positives.
-- **OpenCode compatibility** — process detection accepts `opencode`/`open-code` and legacy `openclaw`/`open-claw`; path handling still uses `OpenClawConfig` until the on-disk layout changes.
+- **OpenCode compatibility** — source path handling still uses `OpenClawConfig` until the on-disk layout changes; detection also accepts `opencode`/`open-code` and legacy `openclaw`/`open-claw` executables.
 - **Commits** — only when the user asks.
 - **Third-party icons** — retain `ThirdParty/lobe-icons-LICENSE.txt` when updating Lobe assets.
 

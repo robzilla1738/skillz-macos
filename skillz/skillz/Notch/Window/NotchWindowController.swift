@@ -336,9 +336,3 @@ private extension NSRect {
             && abs(size.height - other.size.height) < 0.5
     }
 }
-
-enum SettingsWindowOpener {
-    static func openAgentsTab() {
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-    }
-}

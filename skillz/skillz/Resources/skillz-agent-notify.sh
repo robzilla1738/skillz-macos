@@ -27,7 +27,6 @@ esac
 
 STATE_DIR="${HOME}/Library/Application Support/Skillz"
 STATE_FILE="${STATE_DIR}/agent-state.json"
-LOCK_FILE="${STATE_DIR}/agent-state.lock"
 mkdir -p "$STATE_DIR"
 
 LOCK_DIR="${STATE_DIR}/agent-state.lockdir"
@@ -46,7 +45,6 @@ export SKILLZ_TITLE="$title"
 export SKILLZ_CWD="$cwd"
 export SKILLZ_PID="$pid"
 export SKILLZ_STATE_FILE="$STATE_FILE"
-export SKILLZ_LOCK_FILE="$LOCK_FILE"
 export SKILLZ_HOOK_INPUT_FILE="$input_file"
 
 /usr/bin/osascript -l JavaScript <<'JXA'

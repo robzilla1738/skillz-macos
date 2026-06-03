@@ -1,5 +1,7 @@
 import Foundation
 
+/// Condensed fallback used only when the bundled `Resources/skillz-agent-notify.sh`
+/// cannot be located. Keep its behavior in sync with that script when either changes.
 nonisolated enum AgentNotifyScript {
     static let content = """
     #!/bin/sh

@@ -2,12 +2,9 @@ import SwiftUI
 
 struct OnboardingView: View {
     @ObservedObject var settings: AppSettings
+    @ObservedObject var store: CatalogStore
     var onComplete: () -> Void
     var onOpenSettings: () -> Void
-
-    @State private var selectedStep = 0
-
-    private let steps = OnboardingStep.all
 
     var body: some View {
         VStack(alignment: .leading, spacing: SkillzSpacing.xl) {
@@ -21,62 +18,54 @@ struct OnboardingView: View {
             }
 
             HStack(alignment: .top, spacing: SkillzSpacing.xl) {
-                VStack(alignment: .leading, spacing: SkillzSpacing.sm) {
-                    ForEach(Array(steps.enumerated()), id: \.offset) { index, step in
-                        Button {
-                            selectedStep = index
-                        } label: {
-                            HStack(spacing: SkillzSpacing.sm) {
-                                Image(systemName: step.symbolName)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .frame(width: 22)
-                                Text(step.title)
-                                    .font(SkillzTypography.body)
-                                Spacer()
-                            }
-                            .foregroundStyle(selectedStep == index ? Color.skillzCanvas : Color.skillzEmphasis)
-                            .padding(.horizontal, SkillzSpacing.md)
-                            .padding(.vertical, SkillzSpacing.sm)
-                            .background(
-                                RoundedRectangle(cornerRadius: SkillzSpacing.sm)
-                                    .fill(selectedStep == index ? Color.skillzEmphasis : Color.clear)
-                            )
-                        }
-                        .buttonStyle(.plain)
+                VStack(alignment: .leading, spacing: SkillzSpacing.md) {
+                    HStack {
+                        Text("Detected Tools")
+                            .skillzHeadlineStyle()
+                        Spacer()
+                        SkillzTag(text: "\(store.detectedPlatforms.count) found", style: .muted)
                     }
-                }
-                .frame(width: 180)
 
-                VStack(alignment: .leading, spacing: SkillzSpacing.lg) {
-                    Image(systemName: steps[selectedStep].symbolName)
-                        .font(.system(size: 28, weight: .medium))
-                        .foregroundStyle(Color.skillzEmphasis)
-                        .frame(width: 48, height: 48)
-                        .background(Color.skillzSelection, in: RoundedRectangle(cornerRadius: SkillzSpacing.cardRadius))
-
-                    VStack(alignment: .leading, spacing: SkillzSpacing.sm) {
-                        Text(steps[selectedStep].title)
-                            .font(SkillzTypography.headline)
-                            .foregroundStyle(Color.skillzEmphasis)
-
-                        Text(steps[selectedStep].message)
+                    if store.detectedPlatforms.isEmpty {
+                        Text("No agents detected yet — you can still create and manage skills, and Skills will pick them up as you install tools.")
                             .skillzBodySecondaryStyle()
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
-                    VStack(alignment: .leading, spacing: SkillzSpacing.sm) {
-                        Toggle("Show waiting count in menu bar", isOn: $settings.showAgentCountInMenuBar)
-                            .font(SkillzTypography.body)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: SkillzSpacing.sm) {
+                            ForEach(store.sourceStatuses) { status in
+                                OnboardingSourceStatusRow(status: status)
+                            }
+                        }
+                    }
+                    .scrollIndicators(.hidden)
+                }
+                .frame(width: 410)
 
+                VStack(alignment: .leading, spacing: SkillzSpacing.lg) {
+                    VStack(alignment: .leading, spacing: SkillzSpacing.sm) {
+                        Image(systemName: "dot.radiowaves.left.and.right")
+                            .font(.system(size: 24, weight: .medium))
+                            .foregroundStyle(Color.skillzEmphasis)
+                            .frame(width: 44, height: 44)
+                            .background(Color.skillzSelection, in: RoundedRectangle(cornerRadius: SkillzSpacing.cardRadius))
+
+                        Text("Agent Setup")
+                            .skillzHeadlineStyle()
+
+                        Text("Skills reads local agent folders immediately. Waiting-state hooks are installed only for tools that support them.")
+                            .skillzBodySecondaryStyle()
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    VStack(alignment: .leading, spacing: SkillzSpacing.md) {
+                        Toggle("Show waiting count in menu bar", isOn: $settings.showAgentCountInMenuBar)
                         Toggle("Show inspector by default", isOn: $settings.showInspector)
-                            .font(SkillzTypography.body)
+                        Toggle("Install or repair hooks automatically", isOn: $settings.autoInstallAgentHooks)
+                            .disabled(!hasHookCapableTool)
                     }
-                    .padding(SkillzSpacing.lg)
-                    .background(Color.skillzCanvas, in: RoundedRectangle(cornerRadius: SkillzSpacing.cardRadius))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: SkillzSpacing.cardRadius)
-                            .strokeBorder(Color.skillzHairline, lineWidth: 1)
-                    }
+                    .font(SkillzTypography.body)
 
                     Spacer(minLength: 0)
                 }
@@ -84,30 +73,36 @@ struct OnboardingView: View {
             }
 
             HStack {
-                Text("You can adjust sources, appearance, hooks, and editor settings any time.")
+                Text("Sources, appearance, hooks, and editor settings stay available after setup.")
                     .skillzCaptionStyle()
                 Spacer()
                 Button("Settings") {
                     finish()
+                    onComplete()
                     onOpenSettings()
                 }
                 .font(SkillzTypography.body)
 
-                Button(selectedStep == steps.indices.last ? "Get Started" : "Next") {
-                    if selectedStep == steps.indices.last {
-                        finish()
-                        onComplete()
-                    } else {
-                        selectedStep += 1
-                    }
+                Button("Get Started") {
+                    finish()
+                    onComplete()
                 }
                 .font(SkillzTypography.body)
                 .buttonStyle(.borderedProminent)
             }
         }
         .padding(SkillzSpacing.xl)
-        .frame(width: 600, height: 430)
+        .frame(width: 720, height: 560)
         .background(Color.skillzCanvas)
+        .onAppear {
+            if store.snapshot.allItems.isEmpty {
+                store.refresh()
+            }
+        }
+    }
+
+    private var hasHookCapableTool: Bool {
+        store.sourceStatuses.contains { $0.isDetected && $0.hookSupport == .preciseWaitingState }
     }
 
     private func finish() {
@@ -115,26 +110,40 @@ struct OnboardingView: View {
     }
 }
 
-private struct OnboardingStep {
-    let title: String
-    let message: String
-    let symbolName: String
+private struct OnboardingSourceStatusRow: View {
+    let status: PlatformSourceStatus
 
-    static let all: [OnboardingStep] = [
-        OnboardingStep(
-            title: "Browse agent assets",
-            message: "Skills collects skills, MCP servers, and plugins from the standard agent folders on this Mac so new users can see what is installed without hunting through dot-directories.",
-            symbolName: "rectangle.stack"
-        ),
-        OnboardingStep(
-            title: "Edit with context",
-            message: "Select a skill to edit SKILL.md, update metadata, reveal its folder, rename it, or create a new skill in the right platform location.",
-            symbolName: "pencil.and.outline"
-        ),
-        OnboardingStep(
-            title: "Watch live agents",
-            message: "The menu bar shows Codex, Claude Code, and Cursor activity. Waiting agents are counted so you can see when a session needs input.",
-            symbolName: "dot.radiowaves.left.and.right"
-        )
-    ]
+    var body: some View {
+        VStack(alignment: .leading, spacing: SkillzSpacing.xs) {
+            HStack(alignment: .firstTextBaseline, spacing: SkillzSpacing.sm) {
+                PlatformBadge(platform: status.platform)
+                Spacer(minLength: SkillzSpacing.sm)
+                SkillzTag(text: status.statusLabel, style: status.isDetected ? .muted : .subtle)
+                SkillzTag(text: "\(status.itemCount) items", style: .subtle)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: SkillzSpacing.sm) {
+                Text(status.detectionLabel)
+                    .skillzCaptionStyle()
+                    .lineLimit(1)
+                Spacer(minLength: SkillzSpacing.sm)
+                Text(status.hookSupportLabel)
+                    .font(SkillzTypography.caption)
+                    .foregroundStyle(Color.skillzSectionLabel)
+            }
+
+            if !status.isDetected {
+                Text(status.notDetectedHint)
+                    .font(SkillzTypography.caption)
+                    .foregroundStyle(Color.skillzSectionLabel)
+                    .lineLimit(2)
+            }
+        }
+        .padding(SkillzSpacing.md)
+        .background(Color.skillzCanvas, in: RoundedRectangle(cornerRadius: SkillzSpacing.cardRadius))
+        .overlay {
+            RoundedRectangle(cornerRadius: SkillzSpacing.cardRadius)
+                .strokeBorder(Color.skillzHairline, lineWidth: 1)
+        }
+    }
 }

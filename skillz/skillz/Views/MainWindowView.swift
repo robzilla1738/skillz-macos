@@ -86,7 +86,11 @@ struct MainWindowView: View {
         .sheet(isPresented: $showOnboarding) {
             OnboardingView(
                 settings: settings,
-                onComplete: { showOnboarding = false },
+                store: store,
+                onComplete: {
+                    showOnboarding = false
+                    NotificationCenter.default.post(name: .skillzOnboardingCompleted, object: nil)
+                },
                 onOpenSettings: {
                     showOnboarding = false
                     SettingsWindowOpener.openAgentsTab()
@@ -330,20 +334,6 @@ struct MainWindowView: View {
         } catch {
             store.lastOperationError = FileAccessError.userMessage(for: error)
             document.resumeAutosave()
-        }
-    }
-
-    func revealSelection() {
-        guard let item = store.selectedItem else { return }
-        switch item {
-        case .skill(let skill):
-            store.revealInFinder(document.fileURL ?? skill.skillPath)
-        case .mcp(let mcp):
-            store.revealInFinder(mcp.configFileURL)
-        case .plugin(let plugin):
-            if let path = plugin.installPath ?? plugin.metadataPath {
-                store.revealInFinder(path)
-            }
         }
     }
 }

@@ -180,8 +180,7 @@ private struct AgentMenuBarLabel: View {
             SkillzMenuBarIconView()
             if settings.showAgentCountInMenuBar, summary.needsInputCount > 0 {
                 Text("\(summary.needsInputCount)")
-                    .font(.caption2)
-                    .fontWeight(.semibold)
+                    .font(SkillzTypography.captionMedium)
                     .foregroundStyle(.orange)
             }
         }
@@ -255,4 +254,5 @@ extension Notification.Name {
     static let skillzRenameSkill = Notification.Name("skillzRenameSkill")
     static let skillzDeleteSkill = Notification.Name("skillzDeleteSkill")
     static let skillzShowOnboarding = Notification.Name("skillzShowOnboarding")
+    static let skillzOnboardingCompleted = Notification.Name("skillzOnboardingCompleted")
 }

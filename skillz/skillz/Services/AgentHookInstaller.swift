@@ -77,6 +77,13 @@ nonisolated enum AgentHookInstaller {
     }
 
     static func autoInstallDetectedHooks() -> [AgentHookStatus] {
+        let detectedHookPlatforms = AgentHookPlatform.allCases.filter { isDetected($0.agentPlatform) }
+        guard !detectedHookPlatforms.isEmpty else {
+            return AgentHookPlatform.allCases.map {
+                AgentHookStatus(platform: $0, status: .unsupported, detail: "\($0.displayName) is not installed on this Mac.")
+            }
+        }
+
         do {
             try installNotifyScript()
         } catch {
@@ -234,9 +241,13 @@ nonisolated enum AgentHookInstaller {
         guard isDetected(.claudeCode) else {
             return AgentHookStatus(platform: .claudeCode, status: .unsupported, detail: "Claude Code is not installed on this Mac.")
         }
-        guard let root = try? loadJSONObject(at: url),
-              let hooks = root["hooks"] as? [String: Any]
-        else {
+        let root: [String: Any]
+        do {
+            root = try loadJSONObject(at: url)
+        } catch {
+            return AgentHookStatus(platform: .claudeCode, status: .needsRepair, detail: error.localizedDescription)
+        }
+        guard let hooks = root["hooks"] as? [String: Any] else {
             return AgentHookStatus(platform: .claudeCode, status: .notInstalled, detail: "\(AppBrand.name) hooks not found in settings.json.")
         }
         guard hooksContainRequiredEvents(hooks, platform: .claudeCode) else {
@@ -250,9 +261,13 @@ nonisolated enum AgentHookInstaller {
         guard isDetected(.codex) else {
             return AgentHookStatus(platform: .codex, status: .unsupported, detail: "Codex is not installed on this Mac.")
         }
-        guard let root = try? loadJSONObject(at: url),
-              let hooks = root["hooks"] as? [String: Any]
-        else {
+        let root: [String: Any]
+        do {
+            root = try loadJSONObject(at: url)
+        } catch {
+            return AgentHookStatus(platform: .codex, status: .needsRepair, detail: error.localizedDescription)
+        }
+        guard let hooks = root["hooks"] as? [String: Any] else {
             return AgentHookStatus(platform: .codex, status: .notInstalled, detail: "\(AppBrand.name) hooks not found in hooks.json.")
         }
         guard hooksContainRequiredEvents(hooks, platform: .codex) else {
@@ -269,9 +284,13 @@ nonisolated enum AgentHookInstaller {
         guard isDetected(.cursor) else {
             return AgentHookStatus(platform: .cursor, status: .unsupported, detail: "Cursor is not installed on this Mac.")
         }
-        guard let root = try? loadJSONObject(at: url),
-              cursorRootContainsSkillz(root)
-        else {
+        let root: [String: Any]
+        do {
+            root = try loadJSONObject(at: url)
+        } catch {
+            return AgentHookStatus(platform: .cursor, status: .needsRepair, detail: error.localizedDescription)
+        }
+        guard cursorRootContainsSkillz(root) else {
             return AgentHookStatus(platform: .cursor, status: .notInstalled, detail: "\(AppBrand.name) hooks not found in agent-hooks.json.")
         }
         return AgentHookStatus(platform: .cursor, status: .installed, detail: "Hooks active in ~/.cursor/agent-hooks.json.")
@@ -312,12 +331,23 @@ nonisolated enum AgentHookInstaller {
     }
 
     private static func loadJSONObject(at url: URL) throws -> [String: Any] {
-        if FileManager.default.fileExists(atPath: url.path),
-           let data = try? Data(contentsOf: url),
-           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            return json
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return [:]
         }
-        return [:]
+        let data = try Data(contentsOf: url)
+        guard !data.isEmpty else {
+            throw AgentHookError.invalidConfig(path: url.path)
+        }
+        do {
+            guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                throw AgentHookError.invalidConfig(path: url.path)
+            }
+            return json
+        } catch let error as AgentHookError {
+            throw error
+        } catch {
+            throw AgentHookError.invalidConfig(path: url.path)
+        }
     }
 
     private static func saveJSONObjectIfChanged(_ object: [String: Any], to url: URL) throws {
@@ -357,7 +387,7 @@ nonisolated enum AgentHookInstaller {
     }
 
     private static func isDetected(_ platform: AgentPlatform) -> Bool {
-        FileManager.default.fileExists(atPath: platform.homeDirectory.path)
+        PlatformSourceDetector.isInstalled(platform: platform)
     }
 
     private static func hookSpecs(for platform: AgentHookPlatform) -> [(event: String, state: String)] {
@@ -465,10 +495,12 @@ nonisolated enum AgentHookInstaller {
 
 enum AgentHookError: LocalizedError {
     case scriptMissing
+    case invalidConfig(path: String)
 
     var errorDescription: String? {
         switch self {
         case .scriptMissing: return "Could not locate the \(AppBrand.name) notify script in the app bundle."
+        case .invalidConfig(let path): return "Could not parse existing hook config at \(path)."
         }
     }
 }

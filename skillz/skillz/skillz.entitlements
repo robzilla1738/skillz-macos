@@ -7,7 +7,7 @@
   1. Developer ID signing (Automatic with DEVELOPMENT_TEAM)
   2. xcodebuild -scheme skillz -configuration Release archive
   3. notarytool submit + staple the .app
-  4. Smoke test on a Mac without agent folders, then install Cursor and confirm rescan
+  4. Smoke test on a Mac without agent folders, then confirm rescan for supported agent homes and CLIs
 -->
 <plist version="1.0">
 <dict>

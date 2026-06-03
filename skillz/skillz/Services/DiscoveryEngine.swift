@@ -1,6 +1,6 @@
 import Foundation
 
-struct CatalogSnapshot: Sendable {
+nonisolated struct CatalogSnapshot: Sendable {
     var skills: [SkillItem] = []
     var mcps: [MCPItem] = []
     var plugins: [PluginItem] = []
@@ -12,7 +12,7 @@ struct CatalogSnapshot: Sendable {
     }
 }
 
-enum DiscoveryEngine {
+nonisolated enum DiscoveryEngine {
     nonisolated static func discover(
         hideBuiltInCursor: Bool,
         hideSystemCodex: Bool

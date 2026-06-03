@@ -1,8 +1,8 @@
 # Skills
 
-Skills is a macOS app for browsing, editing, and managing local agent harness assets: skills, MCP server configs, and plugins across Cursor, Claude Code, Codex, Hermes, Pi, and OpenClaw.
+Skills is a macOS app for browsing, editing, and managing local agent harness assets: skills, MCP server configs, and plugins across Cursor, Claude Code, Codex, Hermes, Pi, and OpenCode.
 
-It also includes a menu bar monitor for live Cursor, Claude Code, and Codex session status, including waiting-agent counts for sessions that need input.
+It also includes a menu bar monitor for live Cursor, Claude Code, Codex, Hermes, Pi, and OpenCode activity. Cursor, Claude Code, and Codex support precise waiting-state hooks; Hermes, Pi, and OpenCode use process detection until stable hook configs are available.
 
 ## Status
 
@@ -12,7 +12,7 @@ This repository is ready for public source use and Debug verification. Productio
 
 - macOS 26.2+
 - Xcode with the macOS 26.2 SDK or newer
-- No app sandbox. Skills reads local agent folders such as `~/.cursor`, `~/.claude`, and `~/.codex`.
+- No app sandbox. Skills reads local agent folders such as `~/.cursor`, `~/.claude`, `~/.codex`, `~/.hermes`, `~/.pi`, `~/.openclaw`, and shared `~/.agents/skills`.
 
 ## Build
 
@@ -31,10 +31,12 @@ The shared scheme is checked in at `skillz/skillz.xcodeproj/xcshareddata/xcschem
 On launch, Skills:
 
 - creates its application support state file if needed
-- installs or repairs the bundled notify hook script at `~/.skillz/bin/skillz-agent-notify.sh` when automatic hook repair is enabled
-- merges Skills hooks into existing Claude Code and Codex hook configs without replacing existing hooks
+- detects existing agent homes, skill sources, config files, shared `~/.agents/skills`, and known CLI locations without treating shared skill folders as installed apps
+- after onboarding, installs or repairs the bundled notify hook script at `~/.skillz/bin/skillz-agent-notify.sh` when automatic hook repair is enabled
+- merges Skills hooks into existing Cursor, Claude Code, and Codex hook configs without replacing existing hooks
 - enables Codex hooks in `~/.codex/config.toml` when installing Codex hooks
 - watches the Skills state file plus known Cursor, Claude Code, and Codex session directories
+- uses process detection for Hermes, Pi, OpenCode, and fallback active-session detection
 - polls every five seconds as a fallback
 
 The state file lives at:

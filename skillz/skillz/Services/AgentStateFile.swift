@@ -37,12 +37,8 @@ nonisolated enum AgentStateFile {
 
         let snapshot = AgentStateSnapshot(version: AgentPaths.stateFileVersion, sessions: records)
         let data = try JSONEncoder().encode(snapshot)
-        let url = AgentPaths.agentStateFileURL
-        let temp = url.appendingPathExtension("tmp")
-        try data.write(to: temp, options: .atomic)
-        if FileManager.default.fileExists(atPath: url.path) {
-            try FileManager.default.removeItem(at: url)
-        }
-        try FileManager.default.moveItem(at: temp, to: url)
+        // Atomic in-place replace: no window where the file is absent (a concurrent
+        // load() or hook read would otherwise see a missing file and return []).
+        try data.write(to: AgentPaths.agentStateFileURL, options: .atomic)
     }
 }

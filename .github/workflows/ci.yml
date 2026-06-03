@@ -23,8 +23,8 @@ jobs:
 
       - name: Build
         working-directory: skillz
-        run: xcodebuild -scheme skillz -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
+        run: xcodebuild -scheme skillz -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="" build
 
       - name: Unit Tests
         working-directory: skillz
-        run: xcodebuild -scheme skillz -destination 'platform=macOS' -only-testing:skillzTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO test
+        run: xcodebuild -scheme skillz -destination 'platform=macOS' -only-testing:skillzTests CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" DEVELOPMENT_TEAM="" test

@@ -102,7 +102,10 @@ nonisolated enum ClaudeSessionAdapter {
             return nil
         }
 
-        let id = "claude:\(pid ?? Int(sessionId.hashValue))"
+        // Use the raw sessionId, not its hashValue — Swift's String hashing is seeded
+        // per process launch, so a hash-based id would change every app restart and
+        // break dedup-by-id across launches.
+        let id = "claude:\(pid.map(String.init) ?? sessionId)"
         let title = cwd.map { ($0 as NSString).lastPathComponent } ?? "Claude Code"
 
         return AgentSession(

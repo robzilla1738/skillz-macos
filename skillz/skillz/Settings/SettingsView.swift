@@ -36,6 +36,22 @@ struct SettingsView: View {
         }
         .background(Color.skillzCanvas)
         .frame(width: 640, height: 560)
+        .onAppear { applyDestination(SettingsWindowOpener.consumePendingDestination()) }
+        .onReceive(NotificationCenter.default.publisher(for: .skillzOpenSettingsTab)) { note in
+            // Clear the pending value too, so an already-open window's handling here
+            // doesn't leave a stale destination for the next fresh open to consume.
+            _ = SettingsWindowOpener.consumePendingDestination()
+            applyDestination(note.object as? SettingsDestination)
+        }
+    }
+
+    private func applyDestination(_ destination: SettingsDestination?) {
+        switch destination {
+        case .agents:
+            selectedTab = .agents
+        case .none:
+            break
+        }
     }
 
     private var settingsTabBar: some View {
@@ -217,10 +233,15 @@ private struct PlatformSourceRow: View {
                 Text(status.platform.displayName)
                     .font(SkillzTypography.body)
                 Spacer()
+                SkillzTag(text: status.hookSupportLabel, style: .subtle)
                 SkillzTag(text: status.statusLabel, style: status.isDetected ? .muted : .subtle)
                 Text("\(status.itemCount) items")
                     .skillzCaptionStyle()
             }
+
+            Text(status.detectionLabel)
+                .skillzCaptionStyle()
+                .lineLimit(1)
 
             if let path = status.primaryPath {
                 HStack(spacing: SkillzSpacing.sm) {
