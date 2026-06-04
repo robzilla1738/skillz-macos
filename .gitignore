@@ -17,6 +17,7 @@ xcuserdata/
 .build/
 .swiftpm/
 Package.resolved
+!skillz/skillz.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
 # macOS
 .DS_Store

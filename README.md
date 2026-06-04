@@ -6,17 +6,17 @@ It gives you one place to inspect and update the files these tools scatter acros
 
 ## Status
 
-This repository is ready for public source use and Debug verification. Production signing, notarization, Sparkle signing, and release archive generation are intentionally not run from this repo by default.
+This repository is ready for public source use and Debug verification. Production signing, notarization, and release archive generation are intentionally not run from this repo by default.
 
 ## Requirements
 
-- macOS 26.2+
+- macOS 14.0+
 - Xcode with the macOS 26.2 SDK or newer
 - No app sandbox. Skills reads local agent folders such as `~/.cursor`, `~/.claude`, `~/.codex`, `~/.hermes`, `~/.pi`, `~/.openclaw`, and shared `~/.agents/skills`.
 
 ## Install
 
-Skills ships as a signed, notarized DMG on the [Releases](https://github.com/robzilla1738/skillz-macos/releases) page (macOS 26.2+).
+Skills ships as a signed, notarized DMG on the [Releases](https://github.com/robzilla1738/skillz-macos/releases) page (macOS 14.0+).
 
 ### One-line install
 
@@ -64,13 +64,13 @@ On launch, Skills:
 
 ## Updates
 
-The repository is prepared for app-update hosting through GitHub Pages and a Sparkle-compatible appcast placeholder:
+The app is wired to Sparkle 2 and expects its appcast to be hosted through GitHub Pages:
 
 - `docs/appcast.xml`
 - `docs/UPDATES.md`
 - `scripts/prepare-appcast.sh`
 
-Production update publishing still requires a signed and notarized app archive plus a real Sparkle EdDSA key. Do not publish unsigned local Debug builds to the appcast.
+Production update publishing still requires a signed and notarized app archive. Do not publish unsigned local Debug builds to the appcast.
 
 ## CI
 

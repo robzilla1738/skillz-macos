@@ -7,7 +7,7 @@ macOS app for browsing, editing, and managing **agent harness artifacts** on dis
 ```
 skillz-macos/
 ├── CLAUDE.md / AGENTS.md     # This file (keep in sync)
-├── README.md                 # Public status, agent detection, CI, Sparkle placeholders
+├── README.md                 # Public status, agent detection, CI, Sparkle updates
 ├── .github/workflows/ci.yml  # Debug build + skillzTests on macos-26
 └── skillz/                   # Xcode project root
     ├── skillz.xcodeproj
@@ -38,7 +38,7 @@ Xcode uses **PBXFileSystemSynchronizedRootGroup** — new files under `skillz/sk
 | Tests | Swift Testing (`@Test` in `skillzTests`) |
 | Icons | Asset-catalog platform icons (`PlatformIcon*`) rendered as template images in sidebar/menu-bar surfaces |
 
-**Deployment:** macOS **26.2+**, bundle ID `robertcourson.skillz`, **not sandboxed** (`skillz.entitlements` → `com.apple.security.app-sandbox` = false) so the app can read `~/.cursor`, `~/.claude`, `~/.codex`, etc. UI product name is **Skills** (`AppBrand.name`); current marketing version **1.0.2**.
+**Deployment:** macOS **14.0+**, bundle ID `robertcourson.skillz`, **not sandboxed** (`skillz.entitlements` → `com.apple.security.app-sandbox` = false) so the app can read `~/.cursor`, `~/.claude`, `~/.codex`, etc. UI product name is **Skills** (`AppBrand.name`); current marketing version **1.0.3**.
 
 ## Build and test
 

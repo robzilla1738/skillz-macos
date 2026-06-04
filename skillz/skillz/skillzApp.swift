@@ -13,6 +13,7 @@ struct skillzApp: App {
     @StateObject private var settings = AppSettings.shared
     @StateObject private var agentStore = AgentSessionStore()
     @StateObject private var hookStore = AgentHookStore()
+    @StateObject private var sparkleUpdater = SparkleUpdater.shared
 
     var body: some Scene {
         WindowGroup {
@@ -85,6 +86,13 @@ struct skillzApp: App {
             }
 
             CommandMenu(AppBrand.name) {
+                Button("Check for Updates…") {
+                    sparkleUpdater.checkForUpdates()
+                }
+                .disabled(!sparkleUpdater.canCheckForUpdates)
+
+                Divider()
+
                 Button("New Skill…") {
                     NotificationCenter.default.post(name: .skillzNewSkill, object: nil)
                 }
