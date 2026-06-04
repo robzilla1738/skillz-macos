@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4C035EA43F0146BBB45E7830 /* SiriusMarkdown in Frameworks */ = {isa = PBXBuildFile; productRef = 0995C687AB9B4F6F8591DCE3 /* SiriusMarkdown */; };
 		E1B1C0012FDA000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = E1B1C0032FDA000000000001 /* Sparkle */; };
 /* End PBXBuildFile section */
 
@@ -57,6 +58,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E1B1C0012FDA000000000001 /* Sparkle in Frameworks */,
+				4C035EA43F0146BBB45E7830 /* SiriusMarkdown in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -118,6 +120,7 @@
 			name = skillz;
 			packageProductDependencies = (
 				E1B1C0032FDA000000000001 /* Sparkle */,
+				0995C687AB9B4F6F8591DCE3 /* SiriusMarkdown */,
 			);
 			productName = skillz;
 			productReference = E1AAB7822FCA1D4D009EC22C /* Skills.app */;
@@ -203,6 +206,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				E1B1C0022FDA000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
+				393856B6C971491BA3391D94 /* XCRemoteSwiftPackageReference "SiriusMarkdown" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E1AAB7832FCA1D4D009EC22C /* Products */;
@@ -598,9 +602,22 @@
 				minimumVersion = 2.9.2;
 			};
 		};
+		393856B6C971491BA3391D94 /* XCRemoteSwiftPackageReference "SiriusMarkdown" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mikhutchinson/SiriusMarkdown";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.5.4;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		0995C687AB9B4F6F8591DCE3 /* SiriusMarkdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 393856B6C971491BA3391D94 /* XCRemoteSwiftPackageReference "SiriusMarkdown" */;
+			productName = SiriusMarkdown;
+		};
 		E1B1C0032FDA000000000001 /* Sparkle */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = E1B1C0022FDA000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */;

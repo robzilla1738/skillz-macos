@@ -7,6 +7,7 @@ struct SkillDetailView: View {
     @ObservedObject var settings: AppSettings
 
     @State private var selectedFileID: String?
+    @State private var paneMode: MarkdownPaneMode = .edit
     @State private var showSaveFailedAlert = false
     @State private var saveError: String?
 
@@ -169,7 +170,37 @@ struct SkillDetailView: View {
     }
 
     private var editorPane: some View {
-        MarkdownEditorView(document: document, fontSize: settings.editorFontSize)
+        VStack(spacing: 0) {
+            HStack(spacing: SkillzSpacing.md) {
+                Picker("Markdown mode", selection: $paneMode) {
+                    ForEach(MarkdownPaneMode.allCases) { mode in
+                        Label(mode.title, systemImage: mode.systemImage)
+                            .tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 180)
+                .accessibilityLabel("Markdown mode")
+
+                Spacer()
+            }
+            .padding(.horizontal, SkillzSpacing.lg)
+            .padding(.vertical, SkillzSpacing.sm)
+            .background(Color.skillzCanvas)
+
+            SkillzHairline()
+
+            Group {
+                switch paneMode {
+                case .edit:
+                    MarkdownEditorView(document: document, fontSize: settings.editorFontSize)
+                case .preview:
+                    MarkdownPreviewView(markdown: document.text, fontSize: settings.editorFontSize)
+                        .id(settings.editorFontSize)
+                }
+            }
+        }
     }
 
     private func relativePath(for url: URL) -> String {
@@ -207,5 +238,26 @@ struct SkillDetailView: View {
     private func failureMessage(from status: SaveStatus) -> String {
         if case .failed(let message) = status { return message }
         return "Could not save changes."
+    }
+}
+
+private enum MarkdownPaneMode: String, CaseIterable, Identifiable {
+    case edit
+    case preview
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .edit: return "Edit"
+        case .preview: return "Preview"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .edit: return "pencil"
+        case .preview: return "doc.richtext"
+        }
     }
 }

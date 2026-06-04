@@ -50,6 +50,23 @@ struct skillzTests {
         #expect(body.contains("Body text."))
     }
 
+    @Test func markdownPreviewSourceStripsFrontmatter() {
+        let content = """
+        ---
+        name: preview
+        description: Render the body only.
+        ---
+
+        # Preview
+
+        Body text.
+        """
+        let rendered = MarkdownPreviewSource.renderedMarkdown(from: content)
+        #expect(rendered.hasPrefix("# Preview"))
+        #expect(rendered.contains("Body text."))
+        #expect(!rendered.contains("description:"))
+    }
+
     @Test func catalogFilterCountsMatchIntersection() {
         let snapshot = CatalogSnapshot(
             skills: [
