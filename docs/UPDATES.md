@@ -10,13 +10,13 @@ The embedded Sparkle public key is:
 
 ## Feed Location
 
-Expected public feed URL after GitHub Pages is enabled:
+Public feed URL, served by GitHub Pages from the `docs/` folder:
 
 ```text
 https://robzilla1738.github.io/skillz-macos/appcast.xml
 ```
 
-The feed is checked in at `docs/appcast.xml` and is meant to be hosted through GitHub Pages.
+The feed is checked in at `docs/appcast.xml`.
 
 ## Production Release Checklist
 
@@ -27,7 +27,7 @@ The feed is checked in at `docs/appcast.xml` and is meant to be hosted through G
 5. Sign the DMG enclosure with Sparkle EdDSA tooling.
 6. Generate or update `docs/appcast.xml`.
 7. Attach the DMG to a GitHub Release.
-8. Enable or update GitHub Pages for the `docs/` folder.
+8. Push the updated `docs/appcast.xml` so GitHub Pages serves it.
 9. Verify a previously installed production build can discover the appcast through **Check for Updates…**.
 
 This repository does not run the production build or notarization steps automatically.

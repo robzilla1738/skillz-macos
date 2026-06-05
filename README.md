@@ -6,7 +6,7 @@ It gives you one place to inspect and update the files these tools scatter acros
 
 ## Status
 
-This repository is ready for public source use and Debug verification. Production signing, notarization, and release archive generation are intentionally not run from this repo by default.
+Skills ships as signed, notarized DMG releases with Sparkle auto-updates. CI verifies a Debug build and the unit test suite on every push; release archives are produced locally and attached to GitHub Releases.
 
 ## Requirements
 
@@ -64,7 +64,7 @@ On launch, Skills:
 
 ## Updates
 
-The app is wired to Sparkle 2 and expects its appcast to be hosted through GitHub Pages:
+The app updates itself through Sparkle 2. The appcast is hosted through GitHub Pages at `https://robzilla1738.github.io/skillz-macos/appcast.xml`:
 
 - `docs/appcast.xml`
 - `docs/UPDATES.md`
