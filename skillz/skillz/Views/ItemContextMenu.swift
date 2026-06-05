@@ -16,6 +16,21 @@ struct ItemContextMenu: View {
                     store.selectedItemID = item.id
                     NotificationCenter.default.post(name: .skillzRenameSkill, object: nil)
                 }
+                Button("Duplicate Skill") {
+                    store.selectedItemID = item.id
+                    NotificationCenter.default.post(name: .skillzDuplicateSkill, object: nil)
+                }
+                let targets = copyTargets(for: skill)
+                if !targets.isEmpty {
+                    Menu("Copy to Platform") {
+                        ForEach(targets) { platform in
+                            Button(platform.displayName) {
+                                store.selectedItemID = item.id
+                                copySkill(to: platform)
+                            }
+                        }
+                    }
+                }
                 Divider()
                 Button("Delete Skill…", role: .destructive) {
                     store.selectedItemID = item.id
@@ -31,12 +46,30 @@ struct ItemContextMenu: View {
         Button("Copy Path") {
             copyPath()
         }
-        if item.skillItem != nil {
+        if let skill = item.skillItem {
             Button("Open in Cursor") {
-                if let path = item.skillItem?.skillPath {
-                    store.openInCursor(path)
-                }
+                store.openInCursor(skill.skillPath)
             }
+            Button("Open in Default Editor") {
+                store.openInDefaultApp(skill.skillPath)
+            }
+        }
+    }
+
+    /// Detected platforms that don't already host this skill (directly or via shared dirs).
+    private func copyTargets(for skill: SkillItem) -> [AgentPlatform] {
+        var existing = Set(skill.alsoAvailableOn)
+        existing.insert(skill.platform)
+        return store.detectedPlatforms
+            .subtracting(existing)
+            .sorted { $0.displayName < $1.displayName }
+    }
+
+    private func copySkill(to platform: AgentPlatform) {
+        do {
+            try store.copySelectedSkill(toPlatforms: [platform])
+        } catch {
+            store.lastOperationError = FileAccessError.userMessage(for: error)
         }
     }
 

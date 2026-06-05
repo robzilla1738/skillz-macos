@@ -21,6 +21,9 @@ nonisolated struct SkillItem: Identifiable, Equatable, Sendable {
     let modifiedAt: Date?
     /// Other harnesses that read the same `skillPath` (e.g. shared `~/.agents/skills`).
     let alsoAvailableOn: [AgentPlatform]
+    /// Lowercased, length-capped SKILL.md body used for opt-in content search.
+    /// Indexed at scan time (the content is already read), so no extra disk I/O.
+    var searchableBody: String = ""
 
     var listSubtitle: String {
         skillPath.deletingLastPathComponent().path

@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// Monospaced type scale aligned with the markdown editor.
 ///
@@ -40,6 +41,11 @@ enum SkillzTypography {
 
     static func editor(size: Double) -> Font {
         .system(size: size, weight: .regular, design: .monospaced)
+    }
+
+    /// AppKit counterpart to `editor(size:)` for the `NSTextView`-backed editor.
+    static func editorNSFont(size: Double) -> NSFont {
+        .monospacedSystemFont(ofSize: size, weight: .regular)
     }
 }
 

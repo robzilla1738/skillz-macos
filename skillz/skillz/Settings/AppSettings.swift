@@ -41,9 +41,36 @@ final class AppSettings: ObservableObject {
     @AppStorage("showAgentCountInMenuBar") var showAgentCountInMenuBar = true
     @AppStorage("autoInstallAgentHooks") var autoInstallAgentHooks = true
 
+    // Catalog list ordering & search
+    @AppStorage("catalogSortOrderRaw") var catalogSortOrderRaw = CatalogSortOrder.name.rawValue
+    @AppStorage("searchSkillBodies") var searchSkillBodies = false
+
+    // Restored-on-launch library state
+    @AppStorage("lastSelectedItemID") var lastSelectedItemID: String?
+    @AppStorage("lastSelectedSectionRaw") var lastSelectedSectionRaw = CatalogSection.all.rawValue
+    @AppStorage("lastSelectedPlatformRaw") var lastSelectedPlatformRaw: String?
+
+    // Editor
+    @AppStorage("editorLineWrap") var editorLineWrap = true
+
     var appearance: SkillzAppearance {
         get { SkillzAppearance(rawValue: appearanceRaw) ?? .system }
         set { appearanceRaw = newValue.rawValue }
+    }
+
+    var catalogSortOrder: CatalogSortOrder {
+        get { CatalogSortOrder(rawValue: catalogSortOrderRaw) ?? .name }
+        set { catalogSortOrderRaw = newValue.rawValue }
+    }
+
+    var lastSelectedSection: CatalogSection {
+        get { CatalogSection(rawValue: lastSelectedSectionRaw) ?? .all }
+        set { lastSelectedSectionRaw = newValue.rawValue }
+    }
+
+    var lastSelectedPlatform: AgentPlatform? {
+        get { lastSelectedPlatformRaw.flatMap { AgentPlatform(rawValue: $0) } }
+        set { lastSelectedPlatformRaw = newValue?.rawValue }
     }
 
     private init() {}

@@ -169,7 +169,43 @@ struct SkillDetailView: View {
     }
 
     private var editorPane: some View {
-        MarkdownEditorView(document: document, fontSize: settings.editorFontSize)
+        VStack(spacing: 0) {
+            MarkdownEditorView(
+                document: document,
+                fontSize: settings.editorFontSize,
+                lineWrap: settings.editorLineWrap
+            )
+            SkillzHairline()
+            editorFooter
+        }
+    }
+
+    private var editorFooter: some View {
+        HStack(spacing: SkillzSpacing.md) {
+            Text("\(EditorMetrics.wordCount(document.text)) words · \(EditorMetrics.characterCount(document.text)) chars")
+                .font(SkillzTypography.caption)
+                .foregroundStyle(Color.skillzMuted)
+
+            Spacer()
+
+            Toggle("Wrap", isOn: $settings.editorLineWrap)
+                .toggleStyle(.checkbox)
+                .font(SkillzTypography.caption)
+                .foregroundStyle(Color.skillzMuted)
+
+            Button {
+                store.openInDefaultApp(document.fileURL ?? skill.skillPath)
+            } label: {
+                Label("Open in Editor", systemImage: "arrow.up.forward.app")
+                    .font(SkillzTypography.caption)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Color.skillzEmphasis)
+            .help("Open this file in your default editor")
+        }
+        .padding(.horizontal, SkillzSpacing.lg)
+        .padding(.vertical, SkillzSpacing.sm)
+        .background(Color.skillzCanvas)
     }
 
     private func relativePath(for url: URL) -> String {

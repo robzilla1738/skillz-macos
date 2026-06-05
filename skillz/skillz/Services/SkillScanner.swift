@@ -68,7 +68,8 @@ enum SkillScanner {
                 isPluginEmbedded: item.isPluginEmbedded,
                 frontmatter: item.frontmatter,
                 modifiedAt: item.modifiedAt,
-                alsoAvailableOn: also
+                alsoAvailableOn: also,
+                searchableBody: item.searchableBody
             )
             byPath[pathKey] = deduped
         }
@@ -184,7 +185,8 @@ enum SkillScanner {
             isPluginEmbedded: isPluginEmbedded,
             frontmatter: frontmatter,
             modifiedAt: modifiedAt,
-            alsoAvailableOn: []
+            alsoAvailableOn: [],
+            searchableBody: String(body.prefix(8000)).lowercased()
         )
     }
 
