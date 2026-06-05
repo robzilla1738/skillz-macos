@@ -5,6 +5,7 @@ struct MainWindowView: View {
     @ObservedObject var store: CatalogStore
     @ObservedObject var document: EditorDocument
     @ObservedObject var settings: AppSettings
+    @ObservedObject private var toasts = ToastCenter.shared
 
     @State private var showDetailsSheet = false
     @State private var showRenameSheet = false
@@ -114,7 +115,7 @@ struct MainWindowView: View {
         }
         .onAppear {
             if store.snapshot.allItems.isEmpty {
-                store.refresh()
+                store.refresh(preferredID: settings.lastSelectedItemID)
             }
             if !settings.hasCompletedOnboarding {
                 showOnboarding = true
@@ -129,7 +130,20 @@ struct MainWindowView: View {
         .onChange(of: store.showInspector) { _, newValue in
             settings.showInspector = newValue
         }
-        .onChange(of: store.selectedItemID) { _, _ in
+        .onChange(of: store.sortOrder) { _, newValue in
+            settings.catalogSortOrder = newValue
+        }
+        .onChange(of: store.searchSkillBodies) { _, newValue in
+            settings.searchSkillBodies = newValue
+        }
+        .onChange(of: store.selectedSection) { _, newValue in
+            settings.lastSelectedSection = newValue
+        }
+        .onChange(of: store.selectedPlatformFilter) { _, newValue in
+            settings.lastSelectedPlatform = newValue
+        }
+        .onChange(of: store.selectedItemID) { _, newValue in
+            settings.lastSelectedItemID = newValue
             showDetailsSheet = false
             showRenameSheet = false
         }
@@ -138,6 +152,9 @@ struct MainWindowView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .skillzRenameSkill)) { _ in
             renameSelectedSkill()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .skillzDuplicateSkill)) { _ in
+            duplicateSelectedSkill()
         }
         .onReceive(NotificationCenter.default.publisher(for: .skillzDeleteSkill)) { _ in
             confirmDeleteSelectedSkill()
@@ -158,6 +175,14 @@ struct MainWindowView: View {
                 }
             }
         }
+        .overlay(alignment: .bottom) {
+            if activeErrorMessage == nil, let toast = toasts.current {
+                SkillzToast(toast: toast)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .id(toast.id)
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: toasts.current)
         .onChange(of: document.saveStatus) { _, newStatus in
             if case .saved = newStatus {
                 dismissedSaveErrorMessage = nil
@@ -312,6 +337,24 @@ struct MainWindowView: View {
             return
         }
         showRenameSheet = true
+    }
+
+    func duplicateSelectedSkill() {
+        guard let skill = selectedSkill else {
+            store.lastOperationError = "Select a skill before duplicating."
+            return
+        }
+        guard SkillFileService.canModify(skill) else {
+            store.lastOperationError = SkillFileService.modificationBlockedReason(skill)
+            return
+        }
+        document.pauseAutosave()
+        defer { document.resumeAutosave() }
+        do {
+            try store.duplicateSelectedSkill()
+        } catch {
+            store.lastOperationError = FileAccessError.userMessage(for: error)
+        }
     }
 
     func confirmDeleteSelectedSkill() {

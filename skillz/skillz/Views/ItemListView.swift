@@ -62,12 +62,41 @@ struct ItemListView: View {
                 Text(listTitle)
                     .skillzNavigationTitleStyle()
                 Spacer()
+                sortMenu
             }
             .padding(.horizontal, SkillzSpacing.lg)
             .padding(.top, SkillzWindowMetrics.columnHeaderTopInset)
             .padding(.bottom, SkillzSpacing.md)
             .background(Color.skillzCanvas)
         }
+    }
+
+    private var sortMenu: some View {
+        SkillzGlassIconToolbarGroup {
+            Menu {
+                Picker("Sort By", selection: $store.sortOrder) {
+                    ForEach(CatalogSortOrder.allCases) { order in
+                        Label(order.displayName, systemImage: order.symbolName)
+                            .tag(order)
+                    }
+                }
+                .pickerStyle(.inline)
+
+                Divider()
+
+                Toggle("Search Inside Skills", isOn: $store.searchSkillBodies)
+            } label: {
+                Image(systemName: "arrow.up.arrow.down")
+                    .font(.system(size: 13, weight: .medium))
+                    .frame(width: SkillzPillMetrics.height, height: SkillzPillMetrics.height)
+                    .contentShape(Rectangle())
+            }
+            .menuStyle(.button)
+            .buttonStyle(SkillzGlassIconToolbarButtonStyle())
+            .menuIndicator(.hidden)
+            .accessibilityLabel("Sort and search options")
+        }
+        .help("Sort order and search options")
     }
 
     private var isGlobalEmpty: Bool {

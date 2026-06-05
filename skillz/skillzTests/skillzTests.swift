@@ -79,6 +79,120 @@ struct skillzTests {
         #expect(cursorWithMCPSection.count == mcpsOnCursor.count)
     }
 
+    @Test func catalogFilterSortsByNameAscending() {
+        let items = [
+            CatalogItem.skill(Self.makeSkill(name: "Charlie", platform: .cursor)),
+            CatalogItem.skill(Self.makeSkill(name: "alpha", platform: .cursor)),
+            CatalogItem.skill(Self.makeSkill(name: "Bravo", platform: .cursor)),
+        ]
+        let sorted = CatalogFilter.sorted(items, order: .name).map(\.displayName)
+        #expect(sorted == ["alpha", "Bravo", "Charlie"])
+    }
+
+    @Test func catalogFilterSortsByDateModifiedNewestFirstWithNilsLast() {
+        let old = Date(timeIntervalSince1970: 1_000)
+        let new = Date(timeIntervalSince1970: 2_000)
+        let items = [
+            CatalogItem.skill(Self.makeSkill(name: "undated", platform: .cursor, modifiedAt: nil)),
+            CatalogItem.skill(Self.makeSkill(name: "old", platform: .cursor, modifiedAt: old)),
+            CatalogItem.skill(Self.makeSkill(name: "new", platform: .cursor, modifiedAt: new)),
+        ]
+        let sorted = CatalogFilter.sorted(items, order: .dateModified).map(\.displayName)
+        #expect(sorted == ["new", "old", "undated"])
+    }
+
+    @Test func catalogFilterSortsByPlatformThenName() {
+        let items = [
+            CatalogItem.skill(Self.makeSkill(name: "zeta", platform: .claudeCode)),
+            CatalogItem.skill(Self.makeSkill(name: "alpha", platform: .claudeCode)),
+            CatalogItem.skill(Self.makeSkill(name: "mid", platform: .cursor)),
+        ]
+        let sorted = CatalogFilter.sorted(items, order: .platform).map(\.displayName)
+        // Claude Code platform sorts before Cursor; within Claude Code, name ascending.
+        #expect(sorted == ["alpha", "zeta", "mid"])
+    }
+
+    @Test func catalogFilterSortsByKindSkillsThenMCPsThenPlugins() {
+        let items = [
+            CatalogItem.plugin(Self.makePlugin(name: "plug", platform: .cursor)),
+            CatalogItem.mcp(Self.makeMCP(name: "server", platform: .cursor)),
+            CatalogItem.skill(Self.makeSkill(name: "skill", platform: .cursor)),
+        ]
+        let sorted = CatalogFilter.sorted(items, order: .kind).map(\.id.prefix(4))
+        #expect(sorted.first?.hasPrefix("skil") == true)
+        #expect(sorted.last?.hasPrefix("plug") == true)
+    }
+
+    @Test func catalogFilterMatchesSkillBodyOnlyWhenEnabled() {
+        let snapshot = CatalogSnapshot(
+            skills: [Self.makeSkill(name: "deployer", platform: .cursor, searchableBody: "uses kubernetes manifests")],
+            mcps: [],
+            plugins: []
+        )
+
+        let withoutBody = CatalogFilter.items(
+            in: snapshot, section: .all, platform: nil, searchText: "kubernetes", searchBody: false
+        )
+        #expect(withoutBody.isEmpty)
+
+        let withBody = CatalogFilter.items(
+            in: snapshot, section: .all, platform: nil, searchText: "kubernetes", searchBody: true
+        )
+        #expect(withBody.count == 1)
+    }
+
+    @Test func catalogSelectionResolveKeepsPreferredWhenPresent() {
+        let snapshot = CatalogSnapshot(
+            skills: [Self.makeSkill(name: "a", platform: .cursor), Self.makeSkill(name: "b", platform: .cursor)],
+            mcps: [],
+            plugins: []
+        )
+        let preferred = snapshot.skills[1].id
+        let resolved = CatalogSelection.resolve(preferredID: preferred, in: snapshot, fallback: { nil })
+        #expect(resolved == preferred)
+    }
+
+    @Test func catalogSelectionResolveFallsBackWhenMissing() {
+        let snapshot = CatalogSnapshot(
+            skills: [Self.makeSkill(name: "a", platform: .cursor)],
+            mcps: [],
+            plugins: []
+        )
+        let fallbackID = snapshot.skills[0].id
+        let resolved = CatalogSelection.resolve(preferredID: "ghost", in: snapshot, fallback: { fallbackID })
+        #expect(resolved == fallbackID)
+    }
+
+    @Test func catalogSelectionResolveNilWhenEmpty() {
+        let resolved = CatalogSelection.resolve(preferredID: "ghost", in: CatalogSnapshot(), fallback: { nil })
+        #expect(resolved == nil)
+    }
+
+    @Test func editorMetricsCountsWordsAndCharacters() {
+        #expect(EditorMetrics.wordCount("") == 0)
+        #expect(EditorMetrics.wordCount("   ") == 0)
+        #expect(EditorMetrics.wordCount("one two   three\nfour") == 4)
+        #expect(EditorMetrics.characterCount("héllo") == 5)
+    }
+
+    @MainActor
+    @Test func toastCenterShowSetsCurrentAndReplacesPrevious() {
+        let center = ToastCenter()
+        center.displayDuration = 60
+        #expect(center.current == nil)
+
+        center.show("first")
+        let first = center.current
+        #expect(first?.message == "first")
+
+        center.show("second", kind: .info)
+        #expect(center.current?.message == "second")
+        #expect(center.current?.id != first?.id)
+
+        center.dismiss()
+        #expect(center.current == nil)
+    }
+
     @Test func platformSkillPathsSharedAgentsDirectory() {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let agentsSkill = URL(fileURLWithPath: "\(home)/.agents/skills/my-skill/SKILL.md")
@@ -758,6 +872,66 @@ struct skillzTests {
         try? FileManager.default.removeItem(at: tempRoot)
     }
 
+    @Test func skillFileServiceDuplicateCopiesEntireFolderAndIncrementsSuffix() throws {
+        let tempRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("skillz-dup-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: tempRoot, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempRoot) }
+
+        let skillDir = tempRoot.appendingPathComponent("my-skill", isDirectory: true)
+        try FileManager.default.createDirectory(at: skillDir, withIntermediateDirectories: true)
+        let skillMD = skillDir.appendingPathComponent("SKILL.md")
+        try """
+        ---
+        name: my-skill
+        description: Test.
+        ---
+        # Body
+        """.write(to: skillMD, atomically: true, encoding: .utf8)
+        // A secondary file must come along with the folder copy.
+        try "extra".write(to: skillDir.appendingPathComponent("NOTES.md"), atomically: true, encoding: .utf8)
+
+        let item = Self.fileBackedSkill(at: skillMD, root: skillDir, name: "my-skill")
+
+        let dup = try SkillFileService.duplicateSkill(item)
+        #expect(dup.lastPathComponent == "my-skill-copy")
+        #expect(FileManager.default.fileExists(atPath: dup.appendingPathComponent("NOTES.md").path))
+        let dupContent = try String(contentsOf: dup.appendingPathComponent("SKILL.md"), encoding: .utf8)
+        let (fm, _) = FrontmatterParser.parse(from: dupContent)
+        #expect(fm.name == "my-skill-copy")
+
+        let dup2 = try SkillFileService.duplicateSkill(item)
+        #expect(dup2.lastPathComponent == "my-skill-copy-2")
+    }
+
+    @Test func skillFileServiceCopyToPlatformCreatesFolderAndSkipsExisting() throws {
+        try Self.withTemporaryAgentEnvironment { _ in
+            let sourceRoot = AgentPlatform.claudeCode.userSkillsDirectory
+                .appendingPathComponent("my-skill", isDirectory: true)
+            try FileManager.default.createDirectory(at: sourceRoot, withIntermediateDirectories: true)
+            let sourceMD = sourceRoot.appendingPathComponent("SKILL.md")
+            try """
+            ---
+            name: my-skill
+            description: Test.
+            ---
+            # Body
+            """.write(to: sourceMD, atomically: true, encoding: .utf8)
+
+            let item = Self.fileBackedSkill(at: sourceMD, root: sourceRoot, name: "my-skill", platform: .claudeCode)
+
+            let created = try SkillFileService.copySkill(item, toPlatforms: [.cursor])
+            #expect(created.count == 1)
+            let cursorCopy = AgentPlatform.cursor.userSkillsDirectory
+                .appendingPathComponent("my-skill/SKILL.md")
+            #expect(FileManager.default.fileExists(atPath: cursorCopy.path))
+
+            // A second copy must not overwrite — it lands as a -copy variant.
+            let again = try SkillFileService.copySkill(item, toPlatforms: [.cursor])
+            #expect(again.first?.lastPathComponent == "my-skill-copy")
+        }
+    }
+
     @Test func skillFileServiceRenameAndDeleteInTempDirectory() throws {
         let tempRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent("skillz-test-\(UUID().uuidString)", isDirectory: true)
@@ -1057,7 +1231,12 @@ struct skillzTests {
         #expect(model.state == .hidden)
     }
 
-    private static func makeSkill(name: String, platform: AgentPlatform) -> SkillItem {
+    private static func makeSkill(
+        name: String,
+        platform: AgentPlatform,
+        modifiedAt: Date? = nil,
+        searchableBody: String = ""
+    ) -> SkillItem {
     let root = URL(fileURLWithPath: "/tmp/\(name)")
     let path = root.appendingPathComponent("SKILL.md")
     return SkillItem(
@@ -1071,9 +1250,32 @@ struct skillzTests {
         isBuiltIn: false,
         isPluginEmbedded: false,
         frontmatter: SkillFrontmatter(name: name, description: name),
-        modifiedAt: nil,
-        alsoAvailableOn: []
+        modifiedAt: modifiedAt,
+        alsoAvailableOn: [],
+        searchableBody: searchableBody
     )
+    }
+
+    private static func fileBackedSkill(
+        at skillMD: URL,
+        root: URL,
+        name: String,
+        platform: AgentPlatform = .claudeCode
+    ) -> SkillItem {
+        SkillItem(
+            id: SkillItem.makeID(platform: platform, path: skillMD),
+            platform: platform,
+            skillPath: skillMD,
+            rootDirectory: root,
+            displayName: name,
+            description: name,
+            version: nil,
+            isBuiltIn: false,
+            isPluginEmbedded: false,
+            frontmatter: SkillFrontmatter(name: name, description: name),
+            modifiedAt: nil,
+            alsoAvailableOn: []
+        )
     }
 
     private static func makeMCP(name: String, platform: AgentPlatform) -> MCPItem {

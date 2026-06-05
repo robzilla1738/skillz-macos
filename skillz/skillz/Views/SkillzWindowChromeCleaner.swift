@@ -18,6 +18,8 @@ struct SkillzWindowChromeCleaner: NSViewRepresentable {
 
     private func cleanWindow(for view: NSView) {
         guard let window = view.window else { return }
+        // Persist/restore window size & position across launches. Idempotent.
+        window.setFrameAutosaveName("SkillzMainWindow")
         window.toolbar = nil
         window.title = ""
         window.titleVisibility = .hidden

@@ -50,7 +50,7 @@ xcodebuild -scheme skillz -destination 'platform=macOS' test
 ```
 
 - **Scheme:** `skillz`
-- **Unit tests:** `skillzTests` — 48 `@Test` functions (frontmatter, catalog filter, platform paths, source detection, bare-home-not-detected, agent engine, session-adapter liveness/id stability, process runner, hooks, startup hook policy, file service, legacy notch layout/view-model, process exclusions, session dedup, discovery smoke)
+- **Unit tests:** `skillzTests` — 60 `@Test` functions (frontmatter, catalog filter, **catalog sort + body search**, **selection resolve**, platform paths, source detection, bare-home-not-detected, agent engine, session-adapter liveness/id stability, process runner, hooks, startup hook policy, file service incl. **duplicate/copy-to-platform**, **editor metrics**, **toast center**, legacy notch layout/view-model, process exclusions, session dedup, discovery smoke)
 - **UI tests:** `skillzUITests` — launch/performance (slow); skip unless needed
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) — Debug build + `-only-testing:skillzTests` on `macos-26`
 
@@ -87,15 +87,16 @@ Release checklist is inline in `skillz.entitlements` (Developer ID, archive, not
 - **`DiscoveryEngine`** orchestrates `SkillScanner`, `MCPScanner`, `PluginScanner`.
 - **`PlatformSkillPaths`** — per-platform scan roots; shared `~/.agents/skills` for Codex/Pi/OpenCode dedup via `alsoAvailableOn`.
 - **`PlatformSourceDetector`** — centralized platform detection profiles; checks source folders, config files, shared `~/.agents/skills`, and known CLI locations; keeps shared skill sources separate from install signals; drives onboarding, settings, empty states, and “New Skill” defaults.
-- **`CatalogFilter`** — section × platform × search.
+- **`CatalogFilter`** — section × platform × search × **sort** (`CatalogSortOrder`: name/date-modified/platform/type, stable tiebreak on name). Search also matches `SKILL.md` body when `searchSkillBodies` is on (`SkillItem.searchableBody`, indexed at scan time, length-capped + lowercased — no extra disk I/O). Sort menu + body-search toggle live in the `ItemListView` column header.
+- **`CatalogSelection.resolve`** — shared "keep preferred / else first / else nil" selection rule used by `refresh` and `reloadCatalog`; last selection/section/platform/sort persist via `AppSettings` and restore on launch.
 - Live rescan: `FSEventWatcher` + refresh on `NSApplication.didBecomeActive`.
 - **List rows:** `PlatformBadge` + `EnabledBadge` (`.subtle` tag, next to platform pill) for plugins; `subtitleText` fallbacks with `.lineLimit(2, reservesSpace: true)` for uniform row height; `SkillzListRowChrome` animates hover/selection; shared-skill info button when applicable.
 
 ### Skill editing
 
-- **`SkillFileService`** — create/rename/delete under platform skill dirs; validates names via **`SkillNameValidator`**.
+- **`SkillFileService`** — create/rename/delete/**duplicate**/**copy-to-platform** under platform skill dirs; validates names via **`SkillNameValidator`**. `duplicateSkill`/`copySkill` copy the whole folder (multi-file skills) with `-copy` collision-free naming and rewrite the primary `SKILL.md` `name` frontmatter. Context-menu entries: Duplicate Skill, Copy to Platform (targets = detected platforms minus existing).
 - **`FrontmatterParser` / `FrontmatterWriter`** — YAML frontmatter in `SKILL.md`.
-- **`MarkdownEditorView`** — monospaced editor; font size from settings.
+- **`MarkdownEditorView` / `MarkdownTextView`** — `NSTextView`-backed monospaced editor (native Find bar, undo, line-wrap via `editorLineWrap`); font size from settings. The `updateNSView` text diff guards the SwiftUI⇄AppKit feedback loop — never push `document.text` unconditionally. Footer shows word/char count (`EditorMetrics`) + "Open in Editor".
 
 ### Agent monitoring
 
@@ -126,7 +127,7 @@ General (appearance, hide built-in Cursor/Codex skills, inspector) · **Sources*
 
 - **Colors:** `Assets.xcassets` — `SkillzCanvas`, `SkillzInk`, `SkillzEmphasis`, `SkillzMuted`, `SkillzSectionLabel`, `SkillzHairline`, `SkillzSelection`.
 - **Typography:** `SkillzTypography` — monospaced scale; primary UI text uses **`SkillzEmphasis`** (~#333), not pure black; editor uses `SkillzTypography.editor(size:)`.
-- **Components:** `SkillzComponents.swift` (tags, glass search/toolbar groups, detail rows), `SkillzTextStyles` view modifiers.
+- **Components:** `SkillzComponents.swift` (tags, glass search/toolbar groups, detail rows), `SkillzTextStyles` view modifiers. Transient success/info feedback uses `SkillzToast` + `ToastCenter.shared` (auto-dismissing, mounted as a second bottom overlay in `MainWindowView`); errors keep the explicit-dismiss `SkillzErrorBanner`.
 - **Window chrome:** main window owns its custom top bar; do not reintroduce SwiftUI/AppKit toolbar title text or the native sidebar toggle.
 - **Notch:** `NotchMonochromeStyle` — black panel, white-only UI.
 

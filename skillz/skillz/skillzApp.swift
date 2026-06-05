@@ -260,6 +260,7 @@ extension Notification.Name {
     static let skillzNewSkill = Notification.Name("skillzNewSkill")
     static let skillzEditDetails = Notification.Name("skillzEditDetails")
     static let skillzRenameSkill = Notification.Name("skillzRenameSkill")
+    static let skillzDuplicateSkill = Notification.Name("skillzDuplicateSkill")
     static let skillzDeleteSkill = Notification.Name("skillzDeleteSkill")
     static let skillzShowOnboarding = Notification.Name("skillzShowOnboarding")
     static let skillzOnboardingCompleted = Notification.Name("skillzOnboardingCompleted")

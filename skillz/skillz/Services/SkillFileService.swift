@@ -132,6 +132,95 @@ enum SkillFileService {
         return createdPaths
     }
 
+    /// Copies the entire skill folder (including secondary markdown, assets, scripts) alongside
+    /// the original. The copied SKILL.md's frontmatter `name` is updated to the new folder name.
+    @discardableResult
+    static func duplicateSkill(_ skill: SkillItem, newName: String? = nil) throws -> URL {
+        guard canModify(skill) else {
+            throw SkillFileError.blocked(modificationBlockedReason(skill))
+        }
+
+        let parent = skill.rootDirectory.deletingLastPathComponent()
+        let targetName: String
+        if let newName {
+            targetName = try SkillNameValidator.validate(newName).get()
+            if FileManager.default.fileExists(atPath: parent.appendingPathComponent(targetName).path) {
+                throw SkillFileError.duplicateName("A skill named \"\(targetName)\" already exists in this location.")
+            }
+        } else {
+            targetName = collisionFreeName(base: skill.rootDirectory.lastPathComponent, in: parent)
+        }
+
+        let newRoot = parent.appendingPathComponent(targetName, isDirectory: true)
+        try FileManager.default.copyItem(at: skill.rootDirectory, to: newRoot)
+        try renamePrimaryFrontmatter(in: newRoot, to: targetName)
+        return newRoot
+    }
+
+    /// Copies the skill folder into one or more other platforms' user skill directories.
+    /// Existing folders are never overwritten — a `-copy` suffix is applied on collision.
+    @discardableResult
+    static func copySkill(_ skill: SkillItem, toPlatforms platforms: Set<AgentPlatform>) throws -> [URL] {
+        guard !platforms.isEmpty else {
+            throw SkillFileError.validation("Select at least one platform.")
+        }
+        guard isFolderBackedSkill(skill) else {
+            throw SkillFileError.blocked(modificationBlockedReason(skill))
+        }
+
+        let sourceName = skill.rootDirectory.lastPathComponent
+        var createdRoots: [URL] = []
+
+        for platform in platforms.sorted(by: { $0.displayName < $1.displayName }) {
+            let skillsRoot = platform.userSkillsDirectory
+            try FileManager.default.createDirectory(at: skillsRoot, withIntermediateDirectories: true)
+
+            // Don't duplicate the source in place.
+            if skillsRoot.standardizedFileURL == skill.rootDirectory.deletingLastPathComponent().standardizedFileURL {
+                continue
+            }
+
+            let targetName = collisionFreeName(base: sourceName, in: skillsRoot)
+            let newRoot = skillsRoot.appendingPathComponent(targetName, isDirectory: true)
+            try FileManager.default.copyItem(at: skill.rootDirectory, to: newRoot)
+            if targetName != sourceName {
+                try renamePrimaryFrontmatter(in: newRoot, to: targetName)
+            }
+            createdRoots.append(newRoot)
+        }
+
+        if createdRoots.isEmpty {
+            throw SkillFileError.duplicateName("This skill already exists on the selected platform(s).")
+        }
+        return createdRoots
+    }
+
+    /// Returns `base` if free, otherwise `base-copy`, `base-copy-2`, … until an unused name is found.
+    private static func collisionFreeName(base: String, in directory: URL) -> String {
+        if !FileManager.default.fileExists(atPath: directory.appendingPathComponent(base).path) {
+            return base
+        }
+        var candidate = "\(base)-copy"
+        var counter = 2
+        while FileManager.default.fileExists(atPath: directory.appendingPathComponent(candidate).path) {
+            candidate = "\(base)-copy-\(counter)"
+            counter += 1
+        }
+        return candidate
+    }
+
+    /// Rewrites the `name:` frontmatter of a folder's primary SKILL.md to match its folder name.
+    private static func renamePrimaryFrontmatter(in root: URL, to name: String) throws {
+        let skillPath = root.appendingPathComponent("SKILL.md")
+        guard FileManager.default.fileExists(atPath: skillPath.path) else { return }
+        let content = try String(contentsOf: skillPath, encoding: .utf8)
+        let updated = FrontmatterWriter.apply(
+            to: content,
+            update: FrontmatterWriter.Update(name: name)
+        )
+        try updated.write(to: skillPath, atomically: true, encoding: .utf8)
+    }
+
     private static func isFolderBackedSkill(_ skill: SkillItem) -> Bool {
         skill.rootDirectory.appendingPathComponent("SKILL.md").path == skill.skillPath.path
             && skill.rootDirectory.lastPathComponent != "skills"

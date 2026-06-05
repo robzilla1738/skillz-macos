@@ -13,6 +13,8 @@ final class CatalogStore: ObservableObject {
     @Published var searchText = ""
     @Published var selectedItemID: String?
     @Published var showInspector: Bool
+    @Published var sortOrder: CatalogSortOrder
+    @Published var searchSkillBodies: Bool
     @Published var lastOperationError: String?
 
     private var fsWatcher: FSEventWatcher?
@@ -21,12 +23,20 @@ final class CatalogStore: ObservableObject {
     init() {
         self.settings = .shared
         self.showInspector = settings.showInspector
+        self.sortOrder = settings.catalogSortOrder
+        self.searchSkillBodies = settings.searchSkillBodies
+        self.selectedSection = settings.lastSelectedSection
+        self.selectedPlatformFilter = settings.lastSelectedPlatform
         self.sourceStatuses = PlatformSourceDetector.detect(snapshot: CatalogSnapshot())
     }
 
     init(settings: AppSettings) {
         self.settings = settings
         self.showInspector = settings.showInspector
+        self.sortOrder = settings.catalogSortOrder
+        self.searchSkillBodies = settings.searchSkillBodies
+        self.selectedSection = settings.lastSelectedSection
+        self.selectedPlatformFilter = settings.lastSelectedPlatform
         self.sourceStatuses = PlatformSourceDetector.detect(snapshot: CatalogSnapshot())
     }
 
@@ -36,8 +46,10 @@ final class CatalogStore: ObservableObject {
                 in: snapshot,
                 section: selectedSection,
                 platform: selectedPlatformFilter,
-                searchText: searchText
-            )
+                searchText: searchText,
+                searchBody: searchSkillBodies
+            ),
+            order: sortOrder
         )
     }
 
@@ -97,13 +109,13 @@ final class CatalogStore: ObservableObject {
             .map(\.platform)
     }
 
-    func refresh(silent: Bool = false) {
+    func refresh(silent: Bool = false, preferredID: String? = nil) {
         if !silent {
             isLoading = true
         }
         let hideBuiltIn = settings.hideBuiltInCursorSkills
         let hideSystem = settings.hideSystemCodexSkills
-        let preserveID = selectedItemID
+        let preserveID = preferredID ?? selectedItemID
 
         Task.detached(priority: .userInitiated) {
             let newSnapshot = DiscoveryEngine.discover(
@@ -117,13 +129,11 @@ final class CatalogStore: ObservableObject {
                 if !silent {
                     self.isLoading = false
                 }
-                if let preserveID, newSnapshot.allItems.contains(where: { $0.id == preserveID }) {
-                    self.selectedItemID = preserveID
-                } else if let first = self.filteredItems.first?.id {
-                    self.selectedItemID = first
-                } else {
-                    self.selectedItemID = nil
-                }
+                self.selectedItemID = CatalogSelection.resolve(
+                    preferredID: preserveID,
+                    in: newSnapshot,
+                    fallback: { self.filteredItems.first?.id }
+                )
             }
         }
     }
@@ -137,13 +147,11 @@ final class CatalogStore: ObservableObject {
         )
         sourceStatuses = PlatformSourceDetector.detect(snapshot: snapshot)
         lastRefreshedAt = Date()
-        if let preferredID, snapshot.allItems.contains(where: { $0.id == preferredID }) {
-            selectedItemID = preferredID
-        } else if let first = filteredItems.first?.id {
-            selectedItemID = first
-        } else {
-            selectedItemID = nil
-        }
+        selectedItemID = CatalogSelection.resolve(
+            preferredID: preferredID,
+            in: snapshot,
+            fallback: { filteredItems.first?.id }
+        )
     }
 
     func clearLastOperationError() {
@@ -184,6 +192,7 @@ final class CatalogStore: ObservableObject {
     func copyPath(_ url: URL) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(url.path, forType: .string)
+        ToastCenter.shared.show("Path copied")
     }
 
     func openInCursor(_ url: URL) {
@@ -217,6 +226,33 @@ final class CatalogStore: ObservableObject {
         lastOperationError = nil
     }
 
+    func duplicateSelectedSkill(newName: String? = nil) throws {
+        guard let skill = selectedItem?.skillItem else { return }
+        let newRoot = try SkillFileService.duplicateSkill(skill, newName: newName)
+        let newPath = newRoot.appendingPathComponent("SKILL.md")
+        let newID = SkillItem.makeID(platform: skill.platform, path: newPath)
+        reloadCatalog(selecting: newID)
+        lastOperationError = nil
+        ToastCenter.shared.show("Duplicated \"\(skill.displayName)\"")
+    }
+
+    func copySelectedSkill(toPlatforms platforms: Set<AgentPlatform>) throws {
+        guard let skill = selectedItem?.skillItem else { return }
+        let createdRoots = try SkillFileService.copySkill(skill, toPlatforms: platforms)
+        if let firstRoot = createdRoots.first {
+            let newPath = firstRoot.appendingPathComponent("SKILL.md")
+            let platform = PlatformSkillPaths.platformFor(path: newPath)
+            reloadCatalog(selecting: SkillItem.makeID(platform: platform, path: newPath))
+        } else {
+            reloadCatalog(selecting: skill.id)
+        }
+        lastOperationError = nil
+        let names = platforms.sorted(by: { $0.displayName < $1.displayName })
+            .map(\.displayName)
+            .joined(separator: ", ")
+        ToastCenter.shared.show("Copied to \(names)")
+    }
+
     func updateSelectedSkillMetadata(name: String, description: String, version: String?) throws {
         guard let skill = selectedItem?.skillItem else { return }
         try SkillFileService.updateMetadata(skill, name: name, description: description, version: version)
@@ -244,6 +280,7 @@ final class CatalogStore: ObservableObject {
         let newID = SkillItem.makeID(platform: PlatformSkillPaths.platformFor(path: firstPath), path: firstPath)
         reloadCatalog(selecting: newID)
         lastOperationError = nil
+        ToastCenter.shared.show("Skill created")
         return firstPath
     }
 }
