@@ -72,14 +72,14 @@ struct MarkdownTextView: NSViewRepresentable {
             textView.isHorizontallyResizable = false
             container.widthTracksTextView = true
             let width = scrollView.contentSize.width
-            container.containerSize = NSSize(width: width, height: .greatestFiniteMagnitude)
-            textView.maxSize = NSSize(width: width, height: .greatestFiniteMagnitude)
+            container.containerSize = NSSize(width: width, height: CGFloat.greatestFiniteMagnitude)
+            textView.maxSize = NSSize(width: width, height: CGFloat.greatestFiniteMagnitude)
         } else {
             scrollView.hasHorizontalScroller = true
             textView.isHorizontallyResizable = true
             container.widthTracksTextView = false
-            container.containerSize = NSSize(width: .greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
-            textView.maxSize = NSSize(width: .greatestFiniteMagnitude, height: .greatestFiniteMagnitude)
+            container.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+            textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         }
     }
 

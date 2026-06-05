@@ -118,9 +118,9 @@ struct skillzTests {
             CatalogItem.mcp(Self.makeMCP(name: "server", platform: .cursor)),
             CatalogItem.skill(Self.makeSkill(name: "skill", platform: .cursor)),
         ]
-        let sorted = CatalogFilter.sorted(items, order: .kind).map(\.id.prefix(4))
-        #expect(sorted.first?.hasPrefix("skil") == true)
-        #expect(sorted.last?.hasPrefix("plug") == true)
+        let sorted = CatalogFilter.sorted(items, order: .kind).map(\.id)
+        #expect(sorted.first?.hasPrefix("skill:") == true)
+        #expect(sorted.last?.hasPrefix("plugin:") == true)
     }
 
     @Test func catalogFilterMatchesSkillBodyOnlyWhenEnabled() {
