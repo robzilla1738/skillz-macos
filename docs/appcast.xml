@@ -5,6 +5,24 @@
         <link>https://github.com/robzilla1738/skillz-macos/releases</link>
         <description>Production updates for Skills.</description>
         <item>
+            <title>1.0.4</title>
+            <pubDate>Fri, 05 Jun 2026 15:53:43 -0500</pubDate>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>1.0.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown"><![CDATA[# Skills v1.0.4
+
+- Adds catalog sorting by name, date modified, platform, or type from the list header.
+- Adds optional skill body search that matches `SKILL.md` content, not just names.
+- Adds Duplicate Skill and Copy to Platform from the skill context menu.
+- Remembers your selection, section, platform filter, and sort order across launches.
+- Upgrades the markdown editor with the native Find bar, undo, and a line-wrap toggle.
+- Shows toast confirmations for skill actions.
+- Supports macOS 14.0 and newer.
+]]></description>
+            <enclosure url="https://github.com/robzilla1738/skillz-macos/releases/download/v1.0.4/Skills-macOS-v1.0.4.dmg" length="6298763" type="application/octet-stream" sparkle:edSignature="i5WeKPaGFeqjeK+OZiKplPWQTvQO8ImOvuc+jxYJBerbngJXVttsQ0DyrT6qwCKacwj95nq6cZeZ/jvrzyN+CQ=="/>
+        </item>
+        <item>
             <title>1.0.3</title>
             <pubDate>Thu, 04 Jun 2026 10:25:44 -0500</pubDate>
             <sparkle:version>3</sparkle:version>
