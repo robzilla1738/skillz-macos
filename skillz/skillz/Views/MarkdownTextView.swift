@@ -29,7 +29,7 @@ struct MarkdownTextView: NSViewRepresentable {
         textView.isAutomaticTextReplacementEnabled = false
         textView.isAutomaticSpellingCorrectionEnabled = false
         textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 8, height: 12)
+        textView.textContainerInset = NSSize(width: SkillzSpacing.lg, height: SkillzSpacing.md)
         textView.font = SkillzTypography.editorNSFont(size: fontSize)
         let inkColor = NSColor(named: "SkillzEmphasis") ?? .labelColor
         textView.textColor = inkColor
@@ -38,6 +38,7 @@ struct MarkdownTextView: NSViewRepresentable {
 
         context.coordinator.textView = textView
         applyWrap(lineWrap, to: textView, scrollView: scrollView)
+        context.coordinator.appliedWrap = lineWrap
         return scrollView
     }
 
@@ -55,7 +56,13 @@ struct MarkdownTextView: NSViewRepresentable {
         if textView.font?.pointSize != CGFloat(fontSize) {
             textView.font = SkillzTypography.editorNSFont(size: fontSize)
         }
-        applyWrap(lineWrap, to: textView, scrollView: scrollView)
+
+        // Re-apply wrap only when it actually changes — applying it every keystroke would force
+        // a redundant text-container relayout. `widthTracksTextView` handles live resizing.
+        if context.coordinator.appliedWrap != lineWrap {
+            applyWrap(lineWrap, to: textView, scrollView: scrollView)
+            context.coordinator.appliedWrap = lineWrap
+        }
     }
 
     private func applyWrap(_ wrap: Bool, to textView: NSTextView, scrollView: NSScrollView) {
@@ -79,6 +86,7 @@ struct MarkdownTextView: NSViewRepresentable {
     final class Coordinator: NSObject, NSTextViewDelegate {
         var document: EditorDocument
         weak var textView: NSTextView?
+        var appliedWrap: Bool?
 
         init(document: EditorDocument) {
             self.document = document
