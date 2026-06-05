@@ -38,7 +38,7 @@ Xcode uses **PBXFileSystemSynchronizedRootGroup** — new files under `skillz/sk
 | Tests | Swift Testing (`@Test` in `skillzTests`) |
 | Icons | Asset-catalog platform icons (`PlatformIcon*`) rendered as template images in sidebar/menu-bar surfaces |
 
-**Deployment:** macOS **14.0+**, bundle ID `robertcourson.skillz`, **not sandboxed** (`skillz.entitlements` → `com.apple.security.app-sandbox` = false) so the app can read `~/.cursor`, `~/.claude`, `~/.codex`, etc. UI product name is **Skills** (`AppBrand.name`); current marketing version **1.0.3**.
+**Deployment:** macOS **14.0+**, bundle ID `robertcourson.skillz`, **not sandboxed** (`skillz.entitlements` → `com.apple.security.app-sandbox` = false) so the app can read `~/.cursor`, `~/.claude`, `~/.codex`, etc. UI product name is **Skills** (`AppBrand.name`); current marketing version **1.0.4**.
 
 ## Build and test
 
