@@ -74,6 +74,44 @@ final class QuickLookExtensionStatus: ObservableObject {
         }
     }
 
+    /// Quick Look extensions only register reliably when the app runs from a
+    /// stable location. Returns a user-facing warning when the app is running
+    /// translocated (quarantined, launched from Downloads/DMG) or outside
+    /// /Applications; `nil` when the location is fine.
+    nonisolated static func bundleLocationIssue(bundlePath: String = Bundle.main.bundlePath) -> String? {
+        if bundlePath.contains("/AppTranslocation/") {
+            return "macOS is running \(AppBrand.name) from a temporary quarantine location, so Finder can't register the Quick Look extension. Move \(AppBrand.name) to Applications and relaunch."
+        }
+        if !bundlePath.hasPrefix("/Applications/") {
+            return "\(AppBrand.name) is running from \(URL(fileURLWithPath: bundlePath).deletingLastPathComponent().path). Quick Look extensions register most reliably from /Applications — move the app there for Finder previews."
+        }
+        return nil
+    }
+
+    /// Writes the sample content for a type to a temp file and opens it in
+    /// the Quick Look panel (`qlmanage -p`) — instant proof the extension and
+    /// theme work, no Finder hunting required. Fire-and-forget: the panel
+    /// stays open until the user closes it, so we never wait on the process.
+    func openTestPreview(for type: PreviewFileType) {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Skills Preview Sample.\(type.allExtensions[0])")
+        do {
+            try type.defaultSampleContent.write(to: url, atomically: true, encoding: .utf8)
+        } catch {
+            ToastCenter.shared.show("Couldn't write the sample file", kind: .info)
+            return
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/qlmanage")
+        process.arguments = ["-p", url.path]
+        do {
+            try process.run()
+        } catch {
+            ToastCenter.shared.show("Couldn't open the Quick Look panel", kind: .info)
+        }
+    }
+
     /// `qlmanage -r` resets the Quick Look server so theme changes show up
     /// without waiting for cached previews to expire.
     func resetQuickLook() {

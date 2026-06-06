@@ -10,12 +10,16 @@ struct QuickLookSettingsPage: View {
     @StateObject private var status = QuickLookExtensionStatus()
     @State private var selectedType: PreviewFileType = .markdown
     @State private var current: PreviewTypeSettings = .defaults(for: .markdown)
+    @State private var masterEnabled = true
 
     private let store = PreviewSettingsStore()
 
     var body: some View {
         VStack(spacing: 0) {
             header
+            if let issue = QuickLookExtensionStatus.bundleLocationIssue() {
+                locationWarning(issue)
+            }
             SkillzHairline()
             HStack(spacing: 0) {
                 typeList
@@ -37,12 +41,16 @@ struct QuickLookSettingsPage: View {
             // startup seeding was skipped (e.g. first run after an update).
             store.seedMissingDefaults()
             current = store.load(selectedType)
+            masterEnabled = store.masterEnabled
         }
         .onChange(of: selectedType) { _, newType in
             current = store.load(newType)
         }
         .onChange(of: current) { _, newValue in
             store.save(newValue, for: selectedType)
+        }
+        .onChange(of: masterEnabled) { _, newValue in
+            store.masterEnabled = newValue
         }
     }
 
@@ -59,6 +67,12 @@ struct QuickLookSettingsPage: View {
 
             Spacer(minLength: SkillzSpacing.xl)
 
+            Toggle("Skills previews", isOn: $masterEnabled)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .font(SkillzTypography.caption)
+                .help("Off: every file type shows a plain, unthemed preview. The macOS-level switch lives in System Settings.")
+
             SkillzTag(text: status.state.label, style: status.state == .enabled ? .muted : .subtle)
                 .help("Quick Look extension registration state")
 
@@ -74,6 +88,10 @@ struct QuickLookSettingsPage: View {
                 .buttonStyle(SkillzTextButtonStyle())
                 .help("Clear cached previews so theme changes show up immediately")
 
+            Button("Test Preview") { status.openTestPreview(for: selectedType) }
+                .buttonStyle(SkillzTextButtonStyle())
+                .help("Open a sample \(selectedType.displayName) file in the real Quick Look panel")
+
             Button("Done") { onClose() }
                 .buttonStyle(SkillzTextButtonStyle(prominent: true))
                 .keyboardShortcut(.cancelAction)
@@ -81,6 +99,20 @@ struct QuickLookSettingsPage: View {
         }
         .padding(.horizontal, SkillzSpacing.xl)
         .padding(.vertical, SkillzSpacing.lg)
+    }
+
+    private func locationWarning(_ issue: String) -> some View {
+        HStack(spacing: SkillzSpacing.sm) {
+            Image(systemName: "exclamationmark.triangle")
+                .imageScale(.small)
+                .foregroundStyle(Color.skillzEmphasis)
+            Text(issue)
+                .skillzCaptionStyle()
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+        }
+        .padding(.horizontal, SkillzSpacing.xl)
+        .padding(.bottom, SkillzSpacing.md)
     }
 
     // MARK: File-type list
@@ -119,17 +151,67 @@ struct QuickLookSettingsPage: View {
 
     // MARK: Options
 
+    /// Installed fixed-pitch families, captured once per page appearance —
+    /// enumerating fonts is not free and the set rarely changes mid-session.
+    @State private var monospacedFamilies: [String] = PreviewFontResolver.installedMonospacedFamilies()
+
+    /// Bridges optional `fontName` storage to the picker's non-optional tag.
+    /// A stored family that is no longer installed selects System Mono, which
+    /// mirrors how rendering falls back.
+    private var fontSelection: Binding<String> {
+        Binding {
+            switch PreviewFontResolver.choice(for: current.fontName) {
+            case .systemMono: return PreviewFontID.systemMono
+            case .systemSans: return PreviewFontID.systemSans
+            case .systemSerif: return PreviewFontID.systemSerif
+            case .custom(let family): return family
+            }
+        } set: { newValue in
+            current.fontName = newValue == PreviewFontID.systemMono ? nil : newValue
+        }
+    }
+
     private var showsTextOptions: Bool {
         if selectedType == .csv { return false }
         if selectedType == .markdown, current.markdownRenderedMode { return false }
         return true
     }
 
+    /// Styling controls only apply when the master switch and the type's
+    /// "Preview with Skills" toggle are both on.
+    private var stylingEnabled: Bool {
+        masterEnabled && current.enabled
+    }
+
+    /// What Finder will actually render right now — feeds the live preview.
+    private var effectivePreviewSettings: PreviewTypeSettings {
+        stylingEnabled ? current : .neutralFallback
+    }
+
+    private var footnote: String {
+        var text = "Applies to \(extensionList(for: selectedType)). Types that share extensions (yml/yaml, csv/tsv, shell dialects) share one configuration."
+        if !masterEnabled {
+            text += " \(AppBrand.name) previews are off — every type shows a plain, unthemed preview."
+        } else if !current.enabled {
+            text += " This type shows a plain, unthemed preview."
+        } else {
+            text += " Recent macOS reserves some types — such as JSON and CSV — for the built-in preview; \(AppBrand.name) theming applies wherever third-party previews are allowed."
+        }
+        text += " To remove \(AppBrand.name) previews entirely, turn the extension off in System Settings — or just delete the app; the extension goes with it."
+        return text
+    }
+
     private var optionsStrip: some View {
         VStack(alignment: .leading, spacing: SkillzSpacing.md) {
             HStack(spacing: SkillzSpacing.xl) {
+                Toggle("Preview with \(AppBrand.name)", isOn: $current.enabled)
+                    .toggleStyle(.checkbox)
+                    .disabled(!masterEnabled)
+                    .help("Off: .\(selectedType.allExtensions[0]) files show a plain, system-style preview instead of \(AppBrand.name) theming")
+
                 Toggle("Use custom theme", isOn: $current.useCustomTheme)
                     .toggleStyle(.checkbox)
+                    .disabled(!stylingEnabled)
 
                 HStack(spacing: SkillzSpacing.sm) {
                     Text("Theme")
@@ -140,7 +222,24 @@ struct QuickLookSettingsPage: View {
                     }
                     .labelsHidden()
                     .frame(width: 160)
-                    .disabled(!current.useCustomTheme)
+                    .disabled(!stylingEnabled || !current.useCustomTheme)
+                }
+
+                HStack(spacing: SkillzSpacing.sm) {
+                    Text("Font")
+                    Picker("Font", selection: fontSelection) {
+                        Text("System Mono").tag(PreviewFontID.systemMono)
+                        Text("System Sans").tag(PreviewFontID.systemSans)
+                        Text("System Serif").tag(PreviewFontID.systemSerif)
+                        Divider()
+                        ForEach(monospacedFamilies, id: \.self) { family in
+                            Text(family).tag(family)
+                        }
+                    }
+                    .labelsHidden()
+                    .frame(width: 190)
+                    .disabled(!stylingEnabled)
+                    .help("Installed fixed-pitch fonts plus the system families. Missing fonts fall back to System Mono.")
                 }
 
                 HStack(spacing: SkillzSpacing.sm) {
@@ -151,6 +250,7 @@ struct QuickLookSettingsPage: View {
                             .frame(width: 38, alignment: .trailing)
                     }
                 }
+                .disabled(!stylingEnabled)
 
                 Spacer()
             }
@@ -169,7 +269,7 @@ struct QuickLookSettingsPage: View {
 
                     Toggle("Load remote images", isOn: $current.loadRemoteImages)
                         .toggleStyle(.checkbox)
-                        .disabled(!current.markdownRenderedMode)
+                        .disabled(!stylingEnabled || !current.markdownRenderedMode)
                         .help("Off keeps previews network-free — remote images render as placeholders. Applies to Finder previews and the app's Rich Text view.")
                 }
 
@@ -190,8 +290,9 @@ struct QuickLookSettingsPage: View {
 
                 Spacer()
             }
+            .disabled(!stylingEnabled)
 
-            Text("Applies to \(extensionList(for: selectedType)). Types that share extensions (yml/yaml, csv/tsv, shell dialects) share one configuration. Recent macOS reserves some types — such as JSON and CSV — for the built-in preview; \(AppBrand.name) theming applies wherever third-party previews are allowed.")
+            Text(footnote)
                 .skillzCaptionStyle()
         }
         .font(SkillzTypography.body)
@@ -214,7 +315,7 @@ struct QuickLookSettingsPage: View {
             PreviewContentView(
                 text: selectedType.defaultSampleContent,
                 type: selectedType,
-                settings: current
+                settings: effectivePreviewSettings
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: SkillzSpacing.cardRadius))

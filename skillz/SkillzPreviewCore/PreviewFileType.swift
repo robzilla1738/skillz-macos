@@ -9,8 +9,12 @@ nonisolated enum PreviewFileType: String, CaseIterable, Codable, Identifiable, S
     case jsonl
     case yaml
     case toml
+    case ini
+    case env
     case csv
     case log
+    case diff
+    case sql
     case plist
     case xml
     case shell
@@ -24,8 +28,12 @@ nonisolated enum PreviewFileType: String, CaseIterable, Codable, Identifiable, S
         case "jsonl", "ndjson": self = .jsonl
         case "yaml", "yml": self = .yaml
         case "toml": self = .toml
+        case "ini", "conf", "cfg", "properties": self = .ini
+        case "env": self = .env
         case "csv", "tsv": self = .csv
         case "log": self = .log
+        case "diff", "patch": self = .diff
+        case "sql": self = .sql
         case "plist": self = .plist
         case "xml": self = .xml
         case "sh", "zsh", "bash", "fish": self = .shell
@@ -40,8 +48,12 @@ nonisolated enum PreviewFileType: String, CaseIterable, Codable, Identifiable, S
         case .jsonl: return "JSON Lines"
         case .yaml: return "YAML"
         case .toml: return "TOML"
+        case .ini: return "INI / Config"
+        case .env: return "Dotenv"
         case .csv: return "CSV / TSV"
         case .log: return "Log"
+        case .diff: return "Diff / Patch"
+        case .sql: return "SQL"
         case .plist: return "Property List"
         case .xml: return "XML"
         case .shell: return "Shell Script"
@@ -55,8 +67,12 @@ nonisolated enum PreviewFileType: String, CaseIterable, Codable, Identifiable, S
         case .jsonl: return ["jsonl", "ndjson"]
         case .yaml: return ["yaml", "yml"]
         case .toml: return ["toml"]
+        case .ini: return ["ini", "conf", "cfg", "properties"]
+        case .env: return ["env"]
         case .csv: return ["csv", "tsv"]
         case .log: return ["log"]
+        case .diff: return ["diff", "patch"]
+        case .sql: return ["sql"]
         case .plist: return ["plist"]
         case .xml: return ["xml"]
         case .shell: return ["sh", "zsh", "bash", "fish"]
@@ -76,7 +92,7 @@ nonisolated enum PreviewFileType: String, CaseIterable, Codable, Identifiable, S
         case .markdown: return .markdown
         case .csv: return .tabular
         case .log: return .plain
-        case .json, .jsonl, .yaml, .toml, .plist, .xml, .shell: return .structured
+        case .json, .jsonl, .yaml, .toml, .ini, .env, .diff, .sql, .plist, .xml, .shell: return .structured
         }
     }
 
@@ -152,12 +168,61 @@ nonisolated enum PreviewFileType: String, CaseIterable, Codable, Identifiable, S
             args = ["-y", "mcp-search"]
             enabled = true
             """
+        case .ini:
+            return """
+            ; Editor configuration
+            [core]
+            editor = "vim"
+            autocrlf = input
+
+            [alias]
+            st = status
+            co = checkout
+            """
+        case .env:
+            return """
+            # Local development secrets
+            export NODE_ENV=development
+            API_BASE_URL=https://api.example.com
+            API_KEY="redacted-key-value"
+            RETRY_COUNT=3
+            DEBUG=true
+            """
         case .csv:
             return """
             platform,skills,mcps,enabled
             Claude Code,24,6,true
             Cursor,18,3,true
             Codex,12,4,false
+            """
+        case .diff:
+            return """
+            diff --git a/SKILL.md b/SKILL.md
+            index 3f1a2b4..9c8d7e6 100644
+            --- a/SKILL.md
+            +++ b/SKILL.md
+            @@ -1,5 +1,6 @@
+             ---
+             name: sample-skill
+            -description: Old description.
+            +description: New, improved description.
+            +version: 2.0.0
+             ---
+            """
+        case .sql:
+            return """
+            -- Agent session metrics
+            CREATE TABLE sessions (
+                id INTEGER PRIMARY KEY,
+                agent TEXT NOT NULL,
+                started_at TEXT DEFAULT CURRENT_TIMESTAMP
+            );
+
+            SELECT agent, COUNT(*) AS runs
+            FROM sessions
+            WHERE started_at >= '2026-01-01'
+            GROUP BY agent
+            ORDER BY runs DESC;
             """
         case .log:
             return """

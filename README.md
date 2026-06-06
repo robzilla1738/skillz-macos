@@ -64,9 +64,11 @@ On launch, Skills:
 
 ## Quick Look Previews
 
-Skills bundles a Quick Look extension, so Finder spacebar previews of agent artifacts — `md`, `json`, `jsonl`/`ndjson`, `yaml`, `toml`, `csv`/`tsv`, `log`, `plist`, `xml`, and shell scripts — render with themes you pick per file type on the **Quick Look** page (the top-bar button next to Refresh): Skillz mono, GitHub light/dark, terminal, plus font size, line numbers, wrap, JSON pretty-print, and rendered-vs-source markdown, all with a full-size live preview. Markdown previews render rich text with the YAML frontmatter shown as a highlighted block.
+Skills bundles a Quick Look extension, so Finder spacebar previews of agent artifacts — `md`, `json`, `jsonl`/`ndjson`, `yaml`, `toml`, `ini`/`conf`/`cfg`/`properties`, `env`, `csv`/`tsv`, `log`, `diff`/`patch`, `sql`, `plist`, `xml`, and shell scripts — render with themes you pick per file type on the **Quick Look Themes** page (bottom of the sidebar, or the View menu): Skillz mono, GitHub light/dark, terminal, plus **font family** (System Mono/Sans/Serif or any installed fixed-pitch font) and size, line numbers, wrap, JSON pretty-print, and rendered-vs-source markdown, all with a full-size live preview and a **Test Preview** button that opens a real Quick Look panel. Markdown previews render rich text with the YAML frontmatter shown as a highlighted block; diffs color added/removed lines.
 
 The extension registers after the app launches once; manage it under **System Settings → General → Login Items & Extensions → Quick Look**. Recent macOS versions reserve a few types (such as JSON and CSV) for the built-in previewer — Skills theming applies wherever third-party previews are allowed.
+
+Everything is optional: each type has a **Preview with Skills** switch (off → a plain, system-style preview), and one master switch turns all theming off. To remove the previews entirely, toggle the extension off in System Settings → Login Items & Extensions → Quick Look, or just delete the app — the extension is removed with it.
 
 Remote images in markdown previews are off by default for privacy (they render as placeholders); flip **Load remote images** on the markdown type if you want them fetched.
 

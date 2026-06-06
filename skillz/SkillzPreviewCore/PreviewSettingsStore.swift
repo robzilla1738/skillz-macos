@@ -27,6 +27,26 @@ nonisolated struct PreviewSettingsStore {
         "quicklook.preview.settings.\(type.rawValue)"
     }
 
+    static let masterEnabledKey = "quicklook.preview.masterEnabled"
+
+    /// One switch for all Skills previews. Off → every type renders the
+    /// neutral system-style preview, regardless of per-type settings.
+    var masterEnabled: Bool {
+        get { defaults.object(forKey: Self.masterEnabledKey) as? Bool ?? true }
+        nonmutating set { defaults.set(newValue, forKey: Self.masterEnabledKey) }
+    }
+
+    /// What the renderer should actually use: the stored settings when the
+    /// master switch and the type's "Preview with Skills" toggle are both on,
+    /// otherwise the neutral fallback.
+    func effectiveSettings(for type: PreviewFileType) -> PreviewTypeSettings {
+        let stored = load(type)
+        guard masterEnabled, stored.enabled else {
+            return .neutralFallback
+        }
+        return stored
+    }
+
     func load(_ type: PreviewFileType) -> PreviewTypeSettings {
         guard let data = defaults.data(forKey: Self.key(for: type)),
               let decoded = try? JSONDecoder().decode(PreviewTypeSettings.self, from: data) else {

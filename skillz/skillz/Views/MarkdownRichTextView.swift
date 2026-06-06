@@ -10,10 +10,11 @@ struct MarkdownRichTextView: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
-    /// Follows the markdown Quick Look preference so one switch governs
-    /// remote-image loading in both the app and Finder previews.
-    private var allowsRemoteImages: Bool {
-        PreviewSettingsStore().load(.markdown).loadRemoteImages
+    /// Follows the markdown Quick Look preferences so one place governs
+    /// remote-image loading and the font family in both the app and Finder
+    /// previews. (Font size stays the editor's setting.)
+    private var markdownPreferences: PreviewTypeSettings {
+        PreviewSettingsStore().load(.markdown)
     }
 
     var body: some View {
@@ -38,11 +39,18 @@ struct MarkdownRichTextView: View {
 
     @ViewBuilder
     private func renderedBody(_ body: String, palette: PreviewPalette) -> some View {
+        let preferences = markdownPreferences
         let themed = Markdown(body)
-            .markdownTheme(SkillzMarkdownTheme.theme(palette: palette, fontSize: fontSize))
+            .markdownTheme(
+                SkillzMarkdownTheme.theme(
+                    palette: palette,
+                    fontSize: fontSize,
+                    fontName: preferences.fontName
+                )
+            )
             .textSelection(.enabled)
 
-        if allowsRemoteImages {
+        if preferences.loadRemoteImages {
             themed
         } else {
             themed

@@ -1123,7 +1123,9 @@ struct skillzTests {
             Issue.record("Expected transient notch to open immediately")
         }
 
-        try? await Task.sleep(for: .milliseconds(40))
+        // Generous margin over the 10 ms transient — the close timer can fire
+        // late when the machine is under load (CI, parallel builds).
+        try? await Task.sleep(for: .milliseconds(250))
         #expect(model.isPinnedOpen == false)
         // The notch always rests in its visible closed pill rather than hiding entirely.
         #expect(model.state == .closed)
@@ -1342,9 +1344,11 @@ struct skillzTests {
 
     @Test func previewSettingsRoundTripsThroughJSON() throws {
         let original = PreviewTypeSettings(
+            enabled: false,
             useCustomTheme: false,
             preset: .githubDark,
             fontSize: 17,
+            fontName: "Menlo",
             lineWrap: false,
             showLineNumbers: true,
             jsonPrettyPrint: true,
@@ -1365,9 +1369,54 @@ struct skillzTests {
         #expect(decoded.useCustomTheme == neutral.useCustomTheme)
         #expect(decoded.lineWrap == neutral.lineWrap)
         #expect(decoded.markdownRenderedMode == neutral.markdownRenderedMode)
-        // Existing users' saved blobs predate this field — must default to
-        // the network-free behavior.
+        // Existing users' saved blobs predate these fields — must default to
+        // the network-free behavior, the system mono font, and previews ON.
         #expect(decoded.loadRemoteImages == false)
+        #expect(decoded.fontName == nil)
+        #expect(decoded.enabled == true)
+    }
+
+    @Test func previewEffectiveSettingsHonorMasterAndPerTypeSwitches() throws {
+        try Self.withTemporaryPreviewSuite { store, _ in
+            // Fresh state: master on, per-type on → stored settings apply.
+            #expect(store.masterEnabled == true)
+            #expect(store.effectiveSettings(for: .log) == PreviewTypeSettings.defaults(for: .log))
+
+            // Per-type off → neutral system-style preview.
+            var log = PreviewTypeSettings.defaults(for: .log)
+            log.enabled = false
+            store.save(log, for: .log)
+            #expect(store.effectiveSettings(for: .log) == .neutralFallback)
+            // Other types unaffected.
+            #expect(store.effectiveSettings(for: .markdown) == PreviewTypeSettings.defaults(for: .markdown))
+
+            // Master off → everything neutral, even enabled types.
+            store.masterEnabled = false
+            #expect(store.effectiveSettings(for: .markdown) == .neutralFallback)
+            store.masterEnabled = true
+            #expect(store.effectiveSettings(for: .markdown) == PreviewTypeSettings.defaults(for: .markdown))
+        }
+    }
+
+    @Test func previewRenderPlanSkipsTransformsWhenDisabled() {
+        var json = PreviewTypeSettings.defaults(for: .json)
+        json.jsonPrettyPrint = true
+        json.enabled = false
+        let minified = #"{"a":1}"#
+        let plan = PreviewContentView.renderPlan(text: minified, type: .json, settings: json, wasTruncated: false)
+        #expect(plan.text == minified)
+
+        var csv = PreviewTypeSettings.defaults(for: .csv)
+        csv.enabled = false
+        let csvPlan = PreviewContentView.renderPlan(text: "a,b\n1,2", type: .csv, settings: csv, wasTruncated: false)
+        #expect(csvPlan.csvTable == nil)
+
+        // The neutral fallback is the plain, system-style shape.
+        let neutral = PreviewTypeSettings.neutralFallback
+        #expect(neutral.useCustomTheme == false)
+        #expect(neutral.showLineNumbers == false)
+        #expect(neutral.markdownRenderedMode == false)
+        #expect(neutral.loadRemoteImages == false)
     }
 
     @Test func previewSettingsDecodeClampsFontSize() throws {
@@ -1418,8 +1467,12 @@ struct skillzTests {
             ("jsonl", .jsonl), ("ndjson", .jsonl),
             ("yaml", .yaml), ("yml", .yaml),
             ("toml", .toml),
+            ("ini", .ini), ("conf", .ini), ("cfg", .ini), ("properties", .ini),
+            ("env", .env),
             ("csv", .csv), ("tsv", .csv),
             ("log", .log),
+            ("diff", .diff), ("patch", .diff),
+            ("sql", .sql),
             ("plist", .plist),
             ("xml", .xml),
             ("sh", .shell), ("zsh", .shell), ("bash", .shell), ("fish", .shell),
@@ -1533,6 +1586,73 @@ struct skillzTests {
         """
         let highlighted = LogHighlighter.highlight(input, palette: palette)
         #expect(String(highlighted.characters) == input)
+    }
+
+    @Test func configHighlighterPreservesContent() {
+        let palette = Self.lightPreviewPalette()
+        let input = """
+        ; ini comment
+        [core]
+        editor = "vim"
+        timeout = 30
+        # env style
+        export API_KEY="secret"
+        DEBUG=true
+        URL=${BASE}/v1
+        """
+        let highlighted = ConfigHighlighter.highlight(input, palette: palette)
+        #expect(String(highlighted.characters) == input)
+    }
+
+    @Test func diffHighlighterPreservesContent() {
+        let palette = Self.lightPreviewPalette()
+        let input = """
+        diff --git a/file b/file
+        index 1234567..89abcde 100644
+        --- a/file
+        +++ b/file
+        @@ -1,3 +1,3 @@
+         context line
+        -removed line
+        +added line
+        \\ No newline at end of file
+        """
+        let highlighted = DiffHighlighter.highlight(input, palette: palette)
+        #expect(String(highlighted.characters) == input)
+    }
+
+    @Test func sqlHighlighterPreservesContentAcrossBlockComments() {
+        let palette = Self.lightPreviewPalette()
+        let input = """
+        -- line comment
+        SELECT id, name FROM users
+        WHERE name = 'O''Brien' AND age >= 21
+        /* block comment
+           spanning lines */
+        ORDER BY name DESC;
+        """
+        let highlighted = SQLHighlighter.highlight(input, palette: palette)
+        #expect(String(highlighted.characters) == input)
+    }
+
+    @Test func previewFontResolverRoutesChoicesAndFallsBack() {
+        #expect(PreviewFontResolver.choice(for: nil) == .systemMono)
+        #expect(PreviewFontResolver.choice(for: PreviewFontID.systemMono) == .systemMono)
+        #expect(PreviewFontResolver.choice(for: PreviewFontID.systemSans) == .systemSans)
+        #expect(PreviewFontResolver.choice(for: PreviewFontID.systemSerif) == .systemSerif)
+
+        // Installed family resolves as custom; a missing family falls back to
+        // system mono so previews never break.
+        #expect(PreviewFontResolver.choice(for: "Menlo") == .custom("Menlo"))
+        #expect(PreviewFontResolver.choice(for: "Definitely Not A Font 9000") == .systemMono)
+
+        #expect(PreviewFontResolver.displayName(for: nil) == "System Mono")
+        #expect(PreviewFontResolver.displayName(for: "Menlo") == "Menlo")
+
+        let families = PreviewFontResolver.installedMonospacedFamilies()
+        #expect(families.contains("Menlo"))
+        #expect(families.allSatisfy { !$0.hasPrefix(".") })
+        #expect(families == families.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending })
     }
 
     @Test func previewNumberedGutterPrefixesEveryLine() {

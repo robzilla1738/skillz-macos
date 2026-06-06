@@ -51,6 +51,11 @@ struct PreviewContentView: View {
         settings: PreviewTypeSettings,
         wasTruncated: Bool
     ) -> RenderPlan {
+        // Disabled types skip every transform (no pretty-print, no CSV table)
+        // so the neutral preview shows the file as-is.
+        guard settings.enabled else {
+            return RenderPlan(text: text, csvTable: nil, truncated: wasTruncated)
+        }
         switch type {
         case .json where settings.jsonPrettyPrint:
             let recapped = PreviewInputLoader.capped(text: JSONHighlighter.prettyPrinted(text))
@@ -100,7 +105,13 @@ struct PreviewContentView: View {
         let themed = Group {
             if let palette {
                 Markdown(body)
-                    .markdownTheme(SkillzMarkdownTheme.theme(palette: palette, fontSize: settings.fontSize))
+                    .markdownTheme(
+                        SkillzMarkdownTheme.theme(
+                            palette: palette,
+                            fontSize: settings.fontSize,
+                            fontName: settings.fontName
+                        )
+                    )
             } else {
                 Markdown(body)
             }
@@ -127,7 +138,7 @@ struct PreviewContentView: View {
             highlighted = AttributedString(frontmatter)
         }
         return Text(highlighted)
-            .font(.system(size: settings.fontSize * 0.94, design: .monospaced))
+            .font(PreviewFontResolver.font(name: settings.fontName, size: settings.fontSize * 0.94))
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
             .background(palette?.codeBackground ?? Color(nsColor: .quaternarySystemFill))
@@ -166,7 +177,7 @@ struct PreviewContentView: View {
         GeometryReader { proxy in
             ScrollView(settings.lineWrap ? [.vertical] : [.vertical, .horizontal]) {
                 Text(attributed)
-                    .font(.system(size: settings.fontSize, design: .monospaced))
+                    .font(PreviewFontResolver.font(name: settings.fontName, size: settings.fontSize))
                     .lineSpacing(settings.fontSize * 0.25)
                     .multilineTextAlignment(.leading)
                     .padding(16)
@@ -210,6 +221,12 @@ struct PreviewContentView: View {
             return YAMLHighlighter.highlight
         case .toml:
             return TOMLHighlighter.highlight
+        case .ini, .env:
+            return ConfigHighlighter.highlight
+        case .diff:
+            return DiffHighlighter.highlight
+        case .sql:
+            return SQLHighlighter.highlight
         case .xml, .plist:
             return XMLPlistHighlighter.highlight
         case .shell:

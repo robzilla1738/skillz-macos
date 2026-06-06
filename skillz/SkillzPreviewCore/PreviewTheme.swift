@@ -48,6 +48,8 @@ nonisolated struct PreviewTheme: Equatable, Sendable {
     var border: PreviewColor
     var error: PreviewColor
     var warning: PreviewColor
+    /// Added/positive content (diff additions).
+    var success: PreviewColor
 }
 
 /// User-selectable theme presets shown in the Quick Look settings tab.
@@ -106,7 +108,8 @@ nonisolated extension PreviewTheme {
             codeBackground: fix(codeBackground),
             border: fix(border),
             error: fix(error),
-            warning: fix(warning)
+            warning: fix(warning),
+            success: fix(success)
         )
     }
 
@@ -127,7 +130,8 @@ nonisolated extension PreviewTheme {
         codeBackground: PreviewColor(light: 0xF2F2F2, dark: 0x2A2A2A),
         border: PreviewColor(light: 0xE8E8E8, dark: 0x3C3C3C),
         error: PreviewColor(light: 0x000000, dark: 0xFFFFFF),
-        warning: PreviewColor(light: 0x474747, dark: 0x8E8E8E)
+        warning: PreviewColor(light: 0x474747, dark: 0x8E8E8E),
+        success: PreviewColor(light: 0x535353, dark: 0x9D9D9D)
     )
 
     /// GitHub Primer light palette.
@@ -146,7 +150,8 @@ nonisolated extension PreviewTheme {
         codeBackground: PreviewColor(0xF6F8FA),
         border: PreviewColor(0xD0D7DE),
         error: PreviewColor(0xCF222E),
-        warning: PreviewColor(0x9A6700)
+        warning: PreviewColor(0x9A6700),
+        success: PreviewColor(0x1A7F37)
     )
 
     /// GitHub Primer dark palette.
@@ -165,7 +170,8 @@ nonisolated extension PreviewTheme {
         codeBackground: PreviewColor(0x161B22),
         border: PreviewColor(0x30363D),
         error: PreviewColor(0xFF7B72),
-        warning: PreviewColor(0xD29922)
+        warning: PreviewColor(0xD29922),
+        success: PreviewColor(0x3FB950)
     )
 
     /// Green-phosphor terminal palette (always dark).
@@ -184,7 +190,8 @@ nonisolated extension PreviewTheme {
         codeBackground: PreviewColor(0x0B130C),
         border: PreviewColor(0x14301F),
         error: PreviewColor(0xFF5C57),
-        warning: PreviewColor(0xF3F99D)
+        warning: PreviewColor(0xF3F99D),
+        success: PreviewColor(0x50FA7B)
     )
 }
 
@@ -206,6 +213,7 @@ nonisolated struct PreviewPalette: Sendable {
     let border: Color
     let error: Color
     let warning: Color
+    let success: Color
 
     init(theme: PreviewTheme, colorScheme: ColorScheme) {
         background = theme.background.resolve(for: colorScheme)
@@ -223,5 +231,6 @@ nonisolated struct PreviewPalette: Sendable {
         border = theme.border.resolve(for: colorScheme)
         error = theme.error.resolve(for: colorScheme)
         warning = theme.warning.resolve(for: colorScheme)
+        success = theme.success.resolve(for: colorScheme)
     }
 }

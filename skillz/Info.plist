@@ -115,6 +115,82 @@
 		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
+			<string>robertcourson.skillz.ini</string>
+			<key>UTTypeDescription</key>
+			<string>INI Configuration</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>ini</string>
+					<string>conf</string>
+					<string>cfg</string>
+					<string>properties</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>robertcourson.skillz.env</string>
+			<key>UTTypeDescription</key>
+			<string>Dotenv File</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>env</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>robertcourson.skillz.diff</string>
+			<key>UTTypeDescription</key>
+			<string>Diff / Patch</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>diff</string>
+					<string>patch</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>robertcourson.skillz.sql</string>
+			<key>UTTypeDescription</key>
+			<string>SQL Script</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>sql</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
 			<string>robertcourson.skillz.fish</string>
 			<key>UTTypeDescription</key>
 			<string>Fish Shell Script</string>

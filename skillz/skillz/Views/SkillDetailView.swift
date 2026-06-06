@@ -105,6 +105,10 @@ struct SkillDetailView: View {
         selectInitialFile()
     }
 
+    private var canModify: Bool {
+        SkillFileService.canModify(skill)
+    }
+
     private var header: some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: SkillzSpacing.sm) {
@@ -120,7 +124,41 @@ struct SkillDetailView: View {
                     saveStatusChip
                 }
             }
-            Spacer()
+
+            Spacer(minLength: SkillzSpacing.lg)
+
+            // Skill actions live with the skill, not in the window chrome.
+            // fixedSize keeps the capsules at intrinsic width when the
+            // description competes for horizontal space.
+            HStack(spacing: SkillzSpacing.sm) {
+                Button("Details") {
+                    NotificationCenter.default.post(name: .skillzEditDetails, object: nil)
+                }
+                .buttonStyle(SkillzTextButtonStyle())
+                .help(canModify ? "Edit skill metadata" : "View skill metadata")
+
+                Button("Rename") {
+                    NotificationCenter.default.post(name: .skillzRenameSkill, object: nil)
+                }
+                .buttonStyle(SkillzTextButtonStyle())
+                .help("Rename skill folder")
+                .disabled(!canModify)
+
+                Button("Delete") {
+                    NotificationCenter.default.post(name: .skillzDeleteSkill, object: nil)
+                }
+                .buttonStyle(SkillzTextButtonStyle())
+                .help("Delete skill folder")
+                .disabled(!canModify)
+
+                Button("Save") {
+                    _ = document.saveImmediately()
+                }
+                .buttonStyle(SkillzTextButtonStyle(prominent: document.isDirty))
+                .help("Save now (⌘S)")
+                .disabled(!(document.isDirty && document.fileURL != nil))
+            }
+            .fixedSize()
         }
         .padding(.horizontal, SkillzSpacing.xl)
         .padding(.vertical, SkillzSpacing.lg)

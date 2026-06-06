@@ -67,6 +67,31 @@ struct OnboardingView: View {
                     }
                     .font(SkillzTypography.body)
 
+                    HStack(alignment: .top, spacing: SkillzSpacing.md) {
+                        Image(systemName: "eye")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(Color.skillzEmphasis)
+                            .frame(width: 28, height: 28)
+                            .background(Color.skillzSelection, in: RoundedRectangle(cornerRadius: SkillzSpacing.sm))
+
+                        VStack(alignment: .leading, spacing: SkillzSpacing.xs) {
+                            Text("Quick Look previews")
+                                .font(SkillzTypography.captionMedium)
+                                .foregroundStyle(Color.skillzEmphasis)
+                            Text("Finder spacebar previews get \(AppBrand.name) themes for markdown, JSON, logs, diffs, and more. Pick themes and fonts per file type from Quick Look Themes at the bottom of the sidebar — every type is optional, and one switch turns it all off.")
+                                .skillzCaptionStyle()
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(SkillzSpacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.skillzCanvas)
+                    .clipShape(RoundedRectangle(cornerRadius: SkillzSpacing.cardRadius))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: SkillzSpacing.cardRadius)
+                            .strokeBorder(Color.skillzHairline, lineWidth: 1)
+                    }
+
                     Spacer(minLength: 0)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)

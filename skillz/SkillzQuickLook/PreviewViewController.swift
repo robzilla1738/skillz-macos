@@ -15,7 +15,12 @@ final class PreviewViewController: NSViewController, QLPreviewingController {
         // identifier soup in QLSupportedContentTypes. Unknown extensions get
         // the plain-ish log treatment.
         let type = PreviewFileType(fileExtension: url.pathExtension) ?? .log
-        let settings = PreviewSettingsStore().load(type)
+        // Effective settings honor the master switch and the per-type
+        // "Preview with Skills" toggle: disabled types render the neutral
+        // system-style preview. (Declining with an error is NOT an option —
+        // Quick Look then shows a generic icon, not the built-in previewer;
+        // verified empirically on macOS 26.)
+        let settings = PreviewSettingsStore().effectiveSettings(for: type)
 
         let loaded: PreviewInputLoader.LoadedText
         do {

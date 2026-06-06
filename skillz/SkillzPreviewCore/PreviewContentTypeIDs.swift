@@ -16,6 +16,10 @@ nonisolated enum PreviewContentTypeIDs {
         "robertcourson.skillz.toml",
         "robertcourson.skillz.log",
         "robertcourson.skillz.fish",
+        "robertcourson.skillz.ini",
+        "robertcourson.skillz.env",
+        "robertcourson.skillz.diff",
+        "robertcourson.skillz.sql",
     ]
 
     static func supportedContentTypes(for type: PreviewFileType) -> [String] {
@@ -43,6 +47,24 @@ nonisolated enum PreviewContentTypeIDs {
                 "robertcourson.skillz.toml",
                 "net.toml-lang.toml",
                 "public.toml",
+            ]
+        case .ini:
+            return [
+                "robertcourson.skillz.ini",
+                "public.ini",
+            ]
+        case .env:
+            return ["robertcourson.skillz.env"]
+        case .diff:
+            return [
+                "robertcourson.skillz.diff",
+                "public.patch-file",
+                "public.diff",
+            ]
+        case .sql:
+            return [
+                "robertcourson.skillz.sql",
+                "public.sql",
             ]
         case .csv:
             return [

@@ -47,6 +47,14 @@
 				<string>robertcourson.skillz.toml</string>
 				<string>net.toml-lang.toml</string>
 				<string>public.toml</string>
+				<string>robertcourson.skillz.ini</string>
+				<string>public.ini</string>
+				<string>robertcourson.skillz.env</string>
+				<string>robertcourson.skillz.diff</string>
+				<string>public.patch-file</string>
+				<string>public.diff</string>
+				<string>robertcourson.skillz.sql</string>
+				<string>public.sql</string>
 				<string>public.comma-separated-values-text</string>
 				<string>public.tab-separated-values-text</string>
 				<string>robertcourson.skillz.log</string>

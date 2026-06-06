@@ -5,15 +5,16 @@ import MarkdownUI
 /// Used by the Quick Look extension, the settings live preview, and the app's
 /// Rich Text editor pane so all three render identically.
 nonisolated enum SkillzMarkdownTheme {
-    static func theme(palette: PreviewPalette, fontSize: Double) -> Theme {
-        Theme()
+    static func theme(palette: PreviewPalette, fontSize: Double, fontName: String? = nil) -> Theme {
+        let choice = PreviewFontResolver.choice(for: fontName)
+        return Theme()
             .text {
-                FontFamilyVariant(.monospaced)
+                bodyFamily(for: choice)
                 FontSize(fontSize)
                 ForegroundColor(palette.foreground)
             }
             .code {
-                FontFamilyVariant(.monospaced)
+                codeFamily(for: choice)
                 FontSize(.em(0.94))
                 BackgroundColor(palette.codeBackground)
             }
@@ -117,7 +118,7 @@ nonisolated enum SkillzMarkdownTheme {
                         .fixedSize(horizontal: false, vertical: true)
                         .relativeLineSpacing(.em(0.225))
                         .markdownTextStyle {
-                            FontFamilyVariant(.monospaced)
+                            codeFamily(for: choice)
                             FontSize(.em(0.94))
                         }
                         .padding(12)
@@ -153,5 +154,32 @@ nonisolated enum SkillzMarkdownTheme {
                     .overlay(palette.border)
                     .markdownMargin(top: 24, bottom: 24)
             }
+    }
+
+    /// Body text follows the user's font choice.
+    @TextStyleBuilder
+    private static func bodyFamily(for choice: PreviewFontResolver.Choice) -> some TextStyle {
+        switch choice {
+        case .systemMono:
+            FontFamilyVariant(.monospaced)
+        case .systemSans:
+            FontFamily(.system(.default))
+        case .systemSerif:
+            FontFamily(.system(.serif))
+        case .custom(let family):
+            FontFamily(.custom(family))
+        }
+    }
+
+    /// Code spans/blocks stay monospaced for the system sans/serif choices;
+    /// a deliberately chosen custom family (usually a coding font) applies.
+    @TextStyleBuilder
+    private static func codeFamily(for choice: PreviewFontResolver.Choice) -> some TextStyle {
+        switch choice {
+        case .custom(let family):
+            FontFamily(.custom(family))
+        case .systemMono, .systemSans, .systemSerif:
+            FontFamilyVariant(.monospaced)
+        }
     }
 }

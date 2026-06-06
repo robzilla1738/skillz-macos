@@ -63,8 +63,42 @@ struct SidebarView: View {
             }
             .listStyle(.sidebar)
             .scrollContentBackground(.hidden)
+
+            SkillzHairline()
+            actions
         }
         .background(Color.skillzCanvas)
+    }
+
+    /// Global actions live at the sidebar's pinned bottom edge so the top bar
+    /// stays minimal (toggle + search only).
+    private var actions: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            sidebarAction("New Skill", symbol: "plus", help: "Create a new skill (⌘N)") {
+                NotificationCenter.default.post(name: .skillzNewSkill, object: nil)
+            }
+            sidebarAction("Refresh Catalog", symbol: "arrow.clockwise", help: "Rescan agent folders (⌘R)") {
+                store.refresh()
+            }
+            sidebarAction("Quick Look Themes", symbol: "eye", help: "Theme Finder spacebar previews per file type") {
+                NotificationCenter.default.post(name: .skillzShowQuickLookThemes, object: nil)
+            }
+        }
+        .padding(.horizontal, SkillzSpacing.md)
+        .padding(.vertical, SkillzSpacing.sm)
+    }
+
+    private func sidebarAction(
+        _ title: String,
+        symbol: String,
+        help: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            SkillzNavRow(title: title, symbolName: symbol, isSelected: false)
+        }
+        .buttonStyle(SkillzNavRowButtonStyle(isSelected: false))
+        .help(help)
     }
 
     private var header: some View {

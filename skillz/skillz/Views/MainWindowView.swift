@@ -23,15 +23,6 @@ struct MainWindowView: View {
         selectedSkill != nil
     }
 
-    private var canModifySkill: Bool {
-        guard let skill = selectedSkill else { return false }
-        return SkillFileService.canModify(skill)
-    }
-
-    private var canSaveCurrentSkill: Bool {
-        isSkillSelected && document.fileURL != nil && document.isDirty
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             topBar
@@ -169,6 +160,9 @@ struct MainWindowView: View {
         .onReceive(NotificationCenter.default.publisher(for: .skillzNewSkill)) { _ in
             showNewSkillSheet = true
         }
+        .onReceive(NotificationCenter.default.publisher(for: .skillzShowQuickLookThemes)) { _ in
+            showQuickLookSettings = true
+        }
         .onReceive(NotificationCenter.default.publisher(for: .skillzShowOnboarding)) { _ in
             showOnboarding = true
         }
@@ -221,94 +215,30 @@ struct MainWindowView: View {
 
     private var topBar: some View {
         HStack(spacing: 0) {
-            HStack(spacing: SkillzSpacing.md) {
-                SkillzGlassIconToolbarGroup {
-                    Button {
-                        toggleSidebar()
-                    } label: {
-                        Image(systemName: "sidebar.leading")
-                            .font(.system(size: 14, weight: .medium))
-                            .frame(width: SkillzPillMetrics.height, height: SkillzPillMetrics.height)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(SkillzGlassIconToolbarButtonStyle())
-                    .accessibilityLabel("Toggle Sidebar")
+            SkillzGlassIconToolbarGroup {
+                Button {
+                    toggleSidebar()
+                } label: {
+                    Image(systemName: "sidebar.leading")
+                        .font(.system(size: 14, weight: .medium))
+                        .frame(width: SkillzPillMetrics.height, height: SkillzPillMetrics.height)
+                        .contentShape(Rectangle())
                 }
-                .help("Toggle sidebar (⌃⌘S)")
-
-                SkillzGlassToolbarGroup {
-                    Button("New Skill") {
-                        showNewSkillSheet = true
-                    }
-                    .buttonStyle(SkillzGlassToolbarButtonStyle())
-                }
-                .help("Create a new skill (⌘N)")
-
-                SkillzGlassToolbarGroup {
-                    Button("Refresh") {
-                        store.refresh()
-                    }
-                    .buttonStyle(SkillzGlassToolbarButtonStyle())
-                }
-                .help("Refresh catalog (⌘R)")
-
-                SkillzGlassToolbarGroup {
-                    Button("Quick Look") {
-                        showQuickLookSettings.toggle()
-                    }
-                    .buttonStyle(SkillzGlassToolbarButtonStyle(prominent: showQuickLookSettings))
-                }
-                .help("Theme Finder Quick Look previews per file type")
+                .buttonStyle(SkillzGlassIconToolbarButtonStyle())
+                .accessibilityLabel("Toggle Sidebar")
             }
+            .help("Toggle sidebar (⌃⌘S)")
+            .disabled(showQuickLookSettings)
             .padding(.leading, toolbarLeadingInset)
 
             Spacer(minLength: SkillzSpacing.xl)
 
-            HStack(spacing: SkillzSpacing.md) {
-                if isSkillSelected && !showQuickLookSettings {
-                    SkillzGlassToolbarGroup {
-                        HStack(spacing: 0) {
-                            Button("Details") {
-                                editSelectedSkillDetails()
-                            }
-                            .buttonStyle(SkillzGlassToolbarButtonStyle())
-                            .help(canModifySkill ? "Edit skill metadata" : "View skill metadata")
-
-                            Button("Rename") {
-                                renameSelectedSkill()
-                            }
-                            .buttonStyle(SkillzGlassToolbarButtonStyle())
-                            .help("Rename skill folder")
-                            .disabled(!canModifySkill)
-
-                            Button("Delete") {
-                                confirmDeleteSelectedSkill()
-                            }
-                            .buttonStyle(SkillzGlassToolbarButtonStyle())
-                            .help("Delete skill folder")
-                            .disabled(!canModifySkill)
-                        }
-                    }
-
-                    // The primary commit lives in its own group, away from the destructive Delete.
-                    SkillzGlassToolbarGroup {
-                        Button("Save") {
-                            saveCurrentSkill()
-                        }
-                        .buttonStyle(SkillzGlassToolbarButtonStyle(prominent: document.isDirty))
-                        .help("Save now (⌘S)")
-                        .keyboardShortcut("s", modifiers: .command)
-                        .disabled(!canSaveCurrentSkill)
-                    }
-                }
-
-                if !showQuickLookSettings {
-                    SkillzGlassSearchField(
-                        text: $store.searchText,
-                        prompt: "Search skills, MCPs, plugins"
-                    )
-                    .frame(width: 320)
-                }
+            if !showQuickLookSettings {
+                SkillzGlassSearchField(
+                    text: $store.searchText,
+                    prompt: "Search skills, MCPs, plugins"
+                )
+                .frame(width: 320)
             }
         }
         .padding(.trailing, SkillzSpacing.lg)
@@ -318,18 +248,6 @@ struct MainWindowView: View {
         .overlay(alignment: .bottom) {
             SkillzHairline()
         }
-    }
-
-    func saveCurrentSkill() {
-        guard isSkillSelected else {
-            store.lastOperationError = "Select a skill before saving."
-            return
-        }
-        guard document.fileURL != nil else {
-            store.lastOperationError = "No editable skill file is loaded."
-            return
-        }
-        _ = document.saveImmediately()
     }
 
     func toggleSidebar() {

@@ -83,6 +83,12 @@ struct skillzApp: App {
 
                 Toggle("Show Inspector", isOn: $store.showInspector)
                     .keyboardShortcut("i", modifiers: [.command, .option])
+
+                Divider()
+
+                Button("Quick Look Themes…") {
+                    NotificationCenter.default.post(name: .skillzShowQuickLookThemes, object: nil)
+                }
             }
 
             CommandMenu(AppBrand.name) {
@@ -258,6 +264,7 @@ private struct AgentMenuBarView: View {
 
 extension Notification.Name {
     static let skillzNewSkill = Notification.Name("skillzNewSkill")
+    static let skillzShowQuickLookThemes = Notification.Name("skillzShowQuickLookThemes")
     static let skillzEditDetails = Notification.Name("skillzEditDetails")
     static let skillzRenameSkill = Notification.Name("skillzRenameSkill")
     static let skillzDuplicateSkill = Notification.Name("skillzDuplicateSkill")
