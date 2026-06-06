@@ -5,6 +5,24 @@
         <link>https://github.com/robzilla1738/skillz-macos/releases</link>
         <description>Production updates for Skills.</description>
         <item>
+            <title>1.2.0</title>
+            <pubDate>Sat, 06 Jun 2026 13:35:27 -0500</pubDate>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description sparkle:format="markdown"><![CDATA[# Skills v1.2.0
+
+- Themes Finder Quick Look previews for agent files: markdown, JSON, JSON Lines, YAML, TOML, INI/config, dotenv, CSV, logs, diff/patch, SQL, property lists, XML, and shell scripts.
+- Customize every file type from the new Quick Look Themes page (bottom of the sidebar): theme presets (Skillz, GitHub light/dark, Terminal Mono), font family and size, line numbers, wrap, JSON pretty-print, and a full-size live preview with a Test Preview button.
+- Renders markdown previews as rich text with highlighted frontmatter; remote images stay blocked unless you opt in per type.
+- Keeps everything optional: each type has a "Preview with Skills" switch, one master switch turns all theming off, and the extension can be disabled in System Settings or removed by deleting the app.
+- Adds a Source | Rich Text toggle to the skill editor.
+- Cleans up the layout: minimal top bar, New Skill / Refresh / Quick Look Themes pinned to the sidebar, and skill actions in the detail header.
+- Supports macOS 14.0 and newer.
+]]></description>
+            <enclosure url="https://github.com/robzilla1738/skillz-macos/releases/download/v1.2.0/Skills-macOS-v1.2.0.dmg" length="8494741" type="application/octet-stream" sparkle:edSignature="dFWRzEwI5gQmj6fxrijOp1KuWy3QTFzEHV2piOQ9uYgMJIPaF5ej+9KXRjqvLDXKNM1UHo3r/8N7sc+3a6XhAA=="/>
+        </item>
+        <item>
             <title>1.0.4</title>
             <pubDate>Fri, 05 Jun 2026 15:53:43 -0500</pubDate>
             <sparkle:version>4</sparkle:version>
