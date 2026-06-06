@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import SwiftUI
 import Testing
 @testable import skillz
 
@@ -1335,6 +1336,432 @@ struct skillzTests {
         ---
         # \(name)
         """.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    // MARK: - Preview core (Quick Look pipeline)
+
+    @Test func previewSettingsRoundTripsThroughJSON() throws {
+        let original = PreviewTypeSettings(
+            useCustomTheme: false,
+            preset: .githubDark,
+            fontSize: 17,
+            lineWrap: false,
+            showLineNumbers: true,
+            jsonPrettyPrint: true,
+            markdownRenderedMode: false,
+            loadRemoteImages: true
+        )
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(PreviewTypeSettings.self, from: data)
+        #expect(decoded == original)
+    }
+
+    @Test func previewSettingsDecodePartialJSONFallsBackToFieldDefaults() throws {
+        let partial = #"{"preset":"terminalMono","fontSize":15}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(PreviewTypeSettings.self, from: partial)
+        let neutral = PreviewTypeSettings()
+        #expect(decoded.preset == .terminalMono)
+        #expect(decoded.fontSize == 15)
+        #expect(decoded.useCustomTheme == neutral.useCustomTheme)
+        #expect(decoded.lineWrap == neutral.lineWrap)
+        #expect(decoded.markdownRenderedMode == neutral.markdownRenderedMode)
+        // Existing users' saved blobs predate this field — must default to
+        // the network-free behavior.
+        #expect(decoded.loadRemoteImages == false)
+    }
+
+    @Test func previewSettingsDecodeClampsFontSize() throws {
+        let partial = #"{"fontSize":96}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(PreviewTypeSettings.self, from: partial)
+        #expect(decoded.fontSize == PreviewTypeSettings.fontSizeRange.upperBound)
+    }
+
+    @Test func previewSettingsStoreReturnsDefaultsOnMiss() throws {
+        try Self.withTemporaryPreviewSuite { store, _ in
+            #expect(store.load(.json) == PreviewTypeSettings.defaults(for: .json))
+            #expect(store.load(.markdown) == PreviewTypeSettings.defaults(for: .markdown))
+        }
+    }
+
+    @Test func previewSettingsStorePersistsPerTypeIndependently() throws {
+        try Self.withTemporaryPreviewSuite { store, _ in
+            var json = PreviewTypeSettings.defaults(for: .json)
+            json.preset = .terminalMono
+            json.fontSize = 18
+            store.save(json, for: .json)
+
+            #expect(store.load(.json) == json)
+            #expect(store.load(.markdown) == PreviewTypeSettings.defaults(for: .markdown))
+        }
+    }
+
+    @Test func previewSettingsStoreSeedsMissingDefaults() throws {
+        try Self.withTemporaryPreviewSuite { store, defaults in
+            store.seedMissingDefaults()
+            for type in PreviewFileType.allCases {
+                #expect(defaults.data(forKey: PreviewSettingsStore.key(for: type)) != nil)
+            }
+
+            // Seeding again must not overwrite saved customizations.
+            var custom = PreviewTypeSettings.defaults(for: .yaml)
+            custom.fontSize = 21
+            store.save(custom, for: .yaml)
+            store.seedMissingDefaults()
+            #expect(store.load(.yaml) == custom)
+        }
+    }
+
+    @Test func previewFileTypeResolvesAllExtensions() {
+        let expectations: [(String, PreviewFileType?)] = [
+            ("md", .markdown), ("markdown", .markdown), ("MD", .markdown),
+            ("json", .json),
+            ("jsonl", .jsonl), ("ndjson", .jsonl),
+            ("yaml", .yaml), ("yml", .yaml),
+            ("toml", .toml),
+            ("csv", .csv), ("tsv", .csv),
+            ("log", .log),
+            ("plist", .plist),
+            ("xml", .xml),
+            ("sh", .shell), ("zsh", .shell), ("bash", .shell), ("fish", .shell),
+            ("swift", nil), ("", nil),
+        ]
+        for (ext, expected) in expectations {
+            #expect(PreviewFileType(fileExtension: ext) == expected, "extension \(ext)")
+        }
+    }
+
+    @Test func previewContentTypeIDsCoverAllTypesWithoutDuplicates() {
+        for type in PreviewFileType.allCases {
+            #expect(!PreviewContentTypeIDs.supportedContentTypes(for: type).isEmpty, "\(type)")
+        }
+        let all = PreviewContentTypeIDs.allSupportedContentTypes
+        #expect(all.count == Set(all).count)
+        for imported in PreviewContentTypeIDs.importedIdentifiers {
+            #expect(all.contains(imported), "imported identifier \(imported) must be claimed")
+        }
+    }
+
+    @Test func jsonHighlighterPreservesContentAndPrettyPrints() {
+        let palette = Self.lightPreviewPalette()
+        let input = #"{"name": "demo", "count": 3, "ok": true, "tags": [null, -1.5e2]}"#
+        let highlighted = JSONHighlighter.highlight(input, palette: palette)
+        #expect(String(highlighted.characters) == input)
+
+        let pretty = JSONHighlighter.prettyPrinted(input)
+        #expect(pretty.contains("\n"))
+        #expect(pretty.contains("\"name\""))
+
+        // Invalid JSON passes through untouched.
+        #expect(JSONHighlighter.prettyPrinted("not json {") == "not json {")
+    }
+
+    @Test func jsonPrettyPrintedLinesFormatsEachRecord() {
+        let input = "{\"a\":1}\n{\"b\":2}"
+        let pretty = JSONHighlighter.prettyPrintedLines(input)
+        let records = pretty.split(separator: "\n", omittingEmptySubsequences: true)
+        #expect(records.count > 2)
+        #expect(pretty.contains("\"a\""))
+        #expect(pretty.contains("\"b\""))
+    }
+
+    @Test func yamlHighlighterPreservesContent() {
+        let palette = Self.lightPreviewPalette()
+        let input = """
+        # comment
+        ---
+        name: demo
+        count: 3
+        enabled: true
+        quoted: "hello # not a comment"
+        list:
+          - item  # trailing comment
+        """
+        let highlighted = YAMLHighlighter.highlight(input, palette: palette)
+        #expect(String(highlighted.characters) == input)
+    }
+
+    @Test func tomlHighlighterPreservesContent() {
+        let palette = Self.lightPreviewPalette()
+        let input = """
+        # config
+        title = "demo"
+        count = 42
+
+        [server.alpha]
+        enabled = true
+        ports = [8001, 8002]
+        """
+        let highlighted = TOMLHighlighter.highlight(input, palette: palette)
+        #expect(String(highlighted.characters) == input)
+    }
+
+    @Test func xmlPlistHighlighterPreservesContent() {
+        let palette = Self.lightPreviewPalette()
+        let input = """
+        <?xml version="1.0"?>
+        <!-- comment -->
+        <root attr="value">
+          <child enabled='yes'>text &amp; more</child>
+        </root>
+        """
+        let highlighted = XMLPlistHighlighter.highlight(input, palette: palette)
+        #expect(String(highlighted.characters) == input)
+    }
+
+    @Test func shellHighlighterPreservesContent() {
+        let palette = Self.lightPreviewPalette()
+        let input = """
+        #!/bin/bash
+        # setup
+        NAME="world ${USER}"
+        if [ -f "$HOME/file" ]; then
+            echo "hi $NAME" # done
+        fi
+        """
+        let highlighted = ShellHighlighter.highlight(input, palette: palette)
+        #expect(String(highlighted.characters) == input)
+    }
+
+    @Test func logHighlighterPreservesContent() {
+        let palette = Self.lightPreviewPalette()
+        let input = """
+        2026-06-06T10:00:01Z INFO session started
+        [2026-06-06 10:00:02] DEBUG scanning folders
+        Jun  6 10:00:03 host WARNING low disk
+        2026-06-06T10:00:04Z ERROR hook install failed
+        plain line without timestamp
+        """
+        let highlighted = LogHighlighter.highlight(input, palette: palette)
+        #expect(String(highlighted.characters) == input)
+    }
+
+    @Test func previewNumberedGutterPrefixesEveryLine() {
+        let input = "alpha\nbeta\ngamma"
+        let numbered = PreviewContentView.numbered(input, prefixColor: .gray) { AttributedString($0) }
+        let text = String(numbered.characters)
+        let lines = text.split(separator: "\n", omittingEmptySubsequences: false)
+        #expect(lines.count == 3)
+        #expect(lines[0].hasPrefix("1  alpha"))
+        #expect(lines[1].hasPrefix("2  beta"))
+        #expect(lines[2].hasPrefix("3  gamma"))
+    }
+
+    @Test func csvConverterEmitsMarkdownTableWithHeaderSeparator() throws {
+        let result = try #require(CSVTableConverter.markdownTable(from: "a,b\n1,2\n3,4"))
+        let lines = result.markdownTable.split(separator: "\n").map(String.init)
+        #expect(lines[0] == "| a | b |")
+        #expect(lines[1] == "| --- | --- |")
+        #expect(lines[2] == "| 1 | 2 |")
+        #expect(result.truncated == false)
+    }
+
+    @Test func csvConverterCapsRows() throws {
+        let rows = (0...(CSVTableConverter.maxRows + 10)).map { "r\($0),v\($0)" }
+        let result = try #require(CSVTableConverter.markdownTable(from: rows.joined(separator: "\n")))
+        let lineCount = result.markdownTable.split(separator: "\n").count
+        #expect(lineCount == CSVTableConverter.maxRows + 1) // rows + separator
+        #expect(result.truncated)
+    }
+
+    @Test func csvConverterDetectsTabDelimiter() throws {
+        #expect(CSVTableConverter.detectDelimiter(in: "a\tb\n1\t2") == "\t")
+        #expect(CSVTableConverter.detectDelimiter(in: "a,b\n1,2") == ",")
+        let result = try #require(CSVTableConverter.markdownTable(from: "a\tb\n1\t2"))
+        #expect(result.markdownTable.hasPrefix("| a | b |"))
+    }
+
+    @Test func csvConverterHandlesQuotedFieldsAndEscapesPipes() throws {
+        let input = "name,note\n\"Smith, Jane\",\"says \"\"hi\"\" | bye\""
+        let result = try #require(CSVTableConverter.markdownTable(from: input))
+        #expect(result.markdownTable.contains("Smith, Jane"))
+        #expect(result.markdownTable.contains(#"says "hi" \| bye"#))
+    }
+
+    @Test func csvConverterReturnsNilForNonTabularText() {
+        #expect(CSVTableConverter.markdownTable(from: "just a sentence with no delimiter") == nil)
+    }
+
+    @Test func markdownSplitterSeparatesFrontmatterFromBody() {
+        let document = MarkdownDocumentSplitter.split("---\nname: x\ntags: [a]\n---\n# Heading\nBody")
+        #expect(document.frontmatter == "name: x\ntags: [a]")
+        #expect(document.body == "# Heading\nBody")
+    }
+
+    @Test func markdownSplitterReturnsWholeBodyWhenNoFrontmatter() {
+        let document = MarkdownDocumentSplitter.split("# Heading\nBody")
+        #expect(document.frontmatter == nil)
+        #expect(document.body == "# Heading\nBody")
+
+        let unterminated = MarkdownDocumentSplitter.split("---\nname: x\nno closing fence")
+        #expect(unterminated.frontmatter == nil)
+        #expect(unterminated.body == "---\nname: x\nno closing fence")
+    }
+
+    @Test func previewInputLoaderCapsLineCount() {
+        let input = Array(repeating: "line", count: PreviewInputLoader.maxLines + 50).joined(separator: "\n")
+        let result = PreviewInputLoader.capped(text: input)
+        #expect(result.wasTruncated)
+        let lineCount = result.text.split(separator: "\n", omittingEmptySubsequences: false).count
+        #expect(lineCount == PreviewInputLoader.maxLines)
+    }
+
+    @Test func previewInputLoaderCapsByteCount() {
+        let input = String(repeating: "x", count: PreviewInputLoader.maxBytes + 1_000)
+        let result = PreviewInputLoader.capped(text: input)
+        #expect(result.wasTruncated)
+        #expect(result.text.utf8.count <= PreviewInputLoader.maxBytes)
+    }
+
+    @Test func previewInputLoaderReadsAndTruncatesFiles() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("skillz-preview-\(UUID().uuidString).log")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        try "small file".write(to: url, atomically: true, encoding: .utf8)
+        let small = try PreviewInputLoader.load(url, type: .log)
+        #expect(small.text == "small file")
+        #expect(small.wasTruncated == false)
+
+        let big = String(repeating: "y", count: PreviewInputLoader.maxBytes + 10_000)
+        try big.write(to: url, atomically: true, encoding: .utf8)
+        let truncated = try PreviewInputLoader.load(url, type: .log)
+        #expect(truncated.wasTruncated)
+        #expect(truncated.text.utf8.count <= PreviewInputLoader.maxBytes)
+    }
+
+    @Test func previewInputLoaderFlagsTruncatedMalformedPlistFallback() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("skillz-preview-\(UUID().uuidString).plist")
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let big = String(repeating: "not a plist ", count: (PreviewInputLoader.maxBytes / 12) + 2_000)
+        try big.write(to: url, atomically: true, encoding: .utf8)
+
+        let loaded = try PreviewInputLoader.load(url, type: .plist)
+        #expect(loaded.wasTruncated)
+        #expect(loaded.text.utf8.count <= PreviewInputLoader.maxBytes)
+    }
+
+    @Test func plistRendererConvertsBinaryPlistToXML() throws {
+        let object: [String: Any] = ["enabled": true, "count": 4]
+        let binary = try PropertyListSerialization.data(fromPropertyList: object, format: .binary, options: 0)
+        let xml = try #require(PlistRenderer.xmlString(from: binary))
+        #expect(xml.contains("<?xml"))
+        #expect(xml.contains("<key>enabled</key>"))
+        #expect(PlistRenderer.xmlString(from: Data("not a plist".utf8)) == nil)
+    }
+
+    @Test func editorViewModeMapsRawValues() {
+        #expect(EditorViewMode(rawValue: "source") == .source)
+        #expect(EditorViewMode(rawValue: "rich") == .rich)
+        #expect(EditorViewMode(rawValue: "bogus") == nil)
+        #expect(EditorViewMode.source.displayName == "Source")
+        #expect(EditorViewMode.rich.displayName == "Rich Text")
+    }
+
+    @Test func previewRenderPlanRecapsAmplifiedPrettyPrint() {
+        // One-line minified array stays under the loader caps, but pretty-
+        // printing expands it far past the line budget — the plan must re-cap
+        // and report truncation.
+        let minified = "[" + (0..<(PreviewInputLoader.maxLines + 500)).map(String.init).joined(separator: ",") + "]"
+        var settings = PreviewTypeSettings.defaults(for: .json)
+        settings.jsonPrettyPrint = true
+
+        let plan = PreviewContentView.renderPlan(text: minified, type: .json, settings: settings, wasTruncated: false)
+        #expect(plan.truncated)
+        let lineCount = plan.text.split(separator: "\n", omittingEmptySubsequences: false).count
+        #expect(lineCount <= PreviewInputLoader.maxLines)
+
+        // Pretty-print off: input passes through untouched.
+        settings.jsonPrettyPrint = false
+        let passthrough = PreviewContentView.renderPlan(text: minified, type: .json, settings: settings, wasTruncated: false)
+        #expect(passthrough.text == minified)
+        #expect(passthrough.truncated == false)
+    }
+
+    @Test func previewRenderPlanSurfacesCSVTruncation() {
+        let rows = (0...(CSVTableConverter.maxRows + 20)).map { "a\($0),b\($0)" }.joined(separator: "\n")
+        let plan = PreviewContentView.renderPlan(
+            text: rows,
+            type: .csv,
+            settings: .defaults(for: .csv),
+            wasTruncated: false
+        )
+        #expect(plan.csvTable != nil)
+        #expect(plan.truncated)
+
+        let small = PreviewContentView.renderPlan(
+            text: "a,b\n1,2",
+            type: .csv,
+            settings: .defaults(for: .csv),
+            wasTruncated: false
+        )
+        #expect(small.csvTable != nil)
+        #expect(small.truncated == false)
+    }
+
+    @Test func markdownImagePolicyBlocksRemoteAndLoadsLocal() throws {
+        // Remote, relative, and nil URLs must never load (no network fetches
+        // for untrusted markdown).
+        #expect(MarkdownImagePolicy.localImage(at: URL(string: "https://example.com/pixel.png")) == nil)
+        #expect(MarkdownImagePolicy.localImage(at: URL(string: "http://example.com/a.png")) == nil)
+        #expect(MarkdownImagePolicy.localImage(at: URL(string: "image.png")) == nil)
+        #expect(MarkdownImagePolicy.localImage(at: nil) == nil)
+        #expect(MarkdownImagePolicy.placeholderLabel(for: URL(string: "https://example.com/pixel.png")) == "example.com")
+        #expect(MarkdownImagePolicy.placeholderLabel(for: nil) == "image")
+
+        // A small local file URL loads.
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("skillz-image-\(UUID().uuidString).png")
+        defer { try? FileManager.default.removeItem(at: url) }
+        let bitmap = NSBitmapImageRep(
+            bitmapDataPlanes: nil, pixelsWide: 2, pixelsHigh: 2, bitsPerSample: 8,
+            samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0
+        )
+        let png = try #require(bitmap?.representation(using: .png, properties: [:]))
+        try png.write(to: url)
+        #expect(MarkdownImagePolicy.localImage(at: url) != nil)
+    }
+
+    @Test func quickLookStatusParsesPluginkitOutput() {
+        #expect(QuickLookExtensionStatus.parse(output: "") == .notRegistered)
+        #expect(QuickLookExtensionStatus.parse(output: "+    robertcourson.skillz.quicklook(1.0.4)") == .enabled)
+        #expect(QuickLookExtensionStatus.parse(output: "     robertcourson.skillz.quicklook(1.0.4)") == .enabled)
+        #expect(QuickLookExtensionStatus.parse(output: "-    robertcourson.skillz.quicklook(1.0.4)") == .disabled)
+        #expect(QuickLookExtensionStatus.parse(output: "!    robertcourson.skillz.quicklook(1.0.4)") == .disabled)
+        #expect(QuickLookExtensionStatus.parse(output: "+    com.other.extension(1.0)") == .notRegistered)
+    }
+
+    @Test func previewThemePresetsResolveExpectedVariants() {
+        // Adaptive preset differs between light and dark.
+        let auto = PreviewThemePreset.skillzAuto.theme
+        #expect(auto.background.light != auto.background.dark)
+
+        // Forced presets collapse to a single variant.
+        let forcedLight = PreviewThemePreset.skillzLight.theme
+        #expect(forcedLight.background.light == forcedLight.background.dark)
+        let github = PreviewThemePreset.githubDark.theme
+        #expect(github.background.light == github.background.dark)
+
+        // Every preset has a distinct identity for the settings picker.
+        #expect(Set(PreviewThemePreset.allCases.map(\.rawValue)).count == PreviewThemePreset.allCases.count)
+    }
+
+    private static func lightPreviewPalette() -> PreviewPalette {
+        PreviewPalette(theme: PreviewThemePreset.skillzAuto.theme, colorScheme: .light)
+    }
+
+    private static func withTemporaryPreviewSuite(
+        _ body: (PreviewSettingsStore, UserDefaults) throws -> Void
+    ) throws {
+        let suiteName = "skillz-preview-tests-\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            Issue.record("Could not create temporary defaults suite")
+            return
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        try body(PreviewSettingsStore(defaults: defaults), defaults)
     }
 
     private static func writeExecutable(at url: URL, content: String) throws {

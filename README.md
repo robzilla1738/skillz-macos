@@ -62,6 +62,16 @@ On launch, Skills:
 - finds plugin metadata where Cursor, Claude Code, and Codex expose it
 - watches catalog paths for changes and refreshes when the app becomes active
 
+## Quick Look Previews
+
+Skills bundles a Quick Look extension, so Finder spacebar previews of agent artifacts — `md`, `json`, `jsonl`/`ndjson`, `yaml`, `toml`, `csv`/`tsv`, `log`, `plist`, `xml`, and shell scripts — render with themes you pick per file type on the **Quick Look** page (the top-bar button next to Refresh): Skillz mono, GitHub light/dark, terminal, plus font size, line numbers, wrap, JSON pretty-print, and rendered-vs-source markdown, all with a full-size live preview. Markdown previews render rich text with the YAML frontmatter shown as a highlighted block.
+
+The extension registers after the app launches once; manage it under **System Settings → General → Login Items & Extensions → Quick Look**. Recent macOS versions reserve a few types (such as JSON and CSV) for the built-in previewer — Skills theming applies wherever third-party previews are allowed.
+
+Remote images in markdown previews are off by default for privacy (they render as placeholders); flip **Load remote images** on the markdown type if you want them fetched.
+
+In the app itself, the markdown editor gains a **Source | Rich Text** toggle in the footer of every editor pane.
+
 ## Updates
 
 The app updates itself through Sparkle 2. The appcast is hosted through GitHub Pages at `https://robzilla1738.github.io/skillz-macos/appcast.xml`:

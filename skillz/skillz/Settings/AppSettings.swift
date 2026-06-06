@@ -26,6 +26,20 @@ enum SkillzAppearance: String, CaseIterable, Identifiable {
     }
 }
 
+enum EditorViewMode: String, CaseIterable, Identifiable {
+    case source
+    case rich
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .source: return "Source"
+        case .rich: return "Rich Text"
+        }
+    }
+}
+
 @MainActor
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
@@ -52,6 +66,7 @@ final class AppSettings: ObservableObject {
 
     // Editor
     @AppStorage("editorLineWrap") var editorLineWrap = true
+    @AppStorage("editorViewModeRaw") var editorViewModeRaw = EditorViewMode.source.rawValue
 
     var appearance: SkillzAppearance {
         get { SkillzAppearance(rawValue: appearanceRaw) ?? .system }
@@ -71,6 +86,11 @@ final class AppSettings: ObservableObject {
     var lastSelectedPlatform: AgentPlatform? {
         get { lastSelectedPlatformRaw.flatMap { AgentPlatform(rawValue: $0) } }
         set { lastSelectedPlatformRaw = newValue?.rawValue }
+    }
+
+    var editorViewMode: EditorViewMode {
+        get { EditorViewMode(rawValue: editorViewModeRaw) ?? .source }
+        set { editorViewModeRaw = newValue.rawValue }
     }
 
     private init() {}

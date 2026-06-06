@@ -22,11 +22,13 @@ skillz-macos/
     │   ├── Resources/        # skillz-agent-notify.sh (bundled, installed to ~/.skillz/bin)
     │   ├── Assets.xcassets/  # AppIcon, Skillz* colors, PlatformIcon* SVG/vector assets
     │   └── ThirdParty/       # icon notices / third-party licenses
+    ├── SkillzPreviewCore/    # Shared preview engine — compiled into app AND Quick Look targets
+    ├── SkillzQuickLook/      # Quick Look extension (.appex): PreviewViewController, Info.plist, entitlements
     ├── skillzTests/          # Swift Testing unit tests
     └── skillzUITests/        # UI tests (launch smoke)
 ```
 
-Xcode uses **PBXFileSystemSynchronizedRootGroup** — new files under `skillz/skillz/` are picked up automatically; no manual `pbxproj` edits for most adds.
+Xcode uses **PBXFileSystemSynchronizedRootGroup** — new files under `skillz/skillz/` (app), `SkillzPreviewCore/` (app + extension), and `SkillzQuickLook/` (extension) are picked up automatically; no manual `pbxproj` edits for most adds.
 
 ## Stack
 
@@ -37,8 +39,9 @@ Xcode uses **PBXFileSystemSynchronizedRootGroup** — new files under `skillz/sk
 | Persistence | Direct file I/O (no Core Data); `~/Library/Application Support/Skillz/agent-state.json` for agent snapshots |
 | Tests | Swift Testing (`@Test` in `skillzTests`) |
 | Icons | Asset-catalog platform icons (`PlatformIcon*`) rendered as template images in sidebar/menu-bar surfaces |
+| Markdown rendering | **MarkdownUI** (SPM, pinned upToNextMajor 2.4.0) in app + Quick Look targets |
 
-**Deployment:** macOS **14.0+**, bundle ID `robertcourson.skillz`, **not sandboxed** (`skillz.entitlements` → `com.apple.security.app-sandbox` = false) so the app can read `~/.cursor`, `~/.claude`, `~/.codex`, etc. UI product name is **Skills** (`AppBrand.name`); current marketing version **1.0.4**.
+**Deployment:** macOS **14.0+**, bundle ID `robertcourson.skillz`, **not sandboxed** (`skillz.entitlements` → `com.apple.security.app-sandbox` = false) so the app can read `~/.cursor`, `~/.claude`, `~/.codex`, etc. UI product name is **Skills** (`AppBrand.name`); current marketing version **1.1.0**. The embedded Quick Look extension (`robertcourson.skillz.quicklook`, product `SkillzQuickLook.appex`) **is** sandboxed (required for appexes) and shares prefs with the host via the app group `9F2JXY8TCK.group.robertcourson.skillz` (`$(TeamIdentifierPrefix)`-prefixed in both entitlements files).
 
 ## Build and test
 
@@ -50,7 +53,7 @@ xcodebuild -scheme skillz -destination 'platform=macOS' test
 ```
 
 - **Scheme:** `skillz`
-- **Unit tests:** `skillzTests` — 60 `@Test` functions (frontmatter, catalog filter, **catalog sort + body search**, **selection resolve**, platform paths, source detection, bare-home-not-detected, agent engine, session-adapter liveness/id stability, process runner, hooks, startup hook policy, file service incl. **duplicate/copy-to-platform**, **editor metrics**, **toast center**, legacy notch layout/view-model, process exclusions, session dedup, discovery smoke)
+- **Unit tests:** `skillzTests` — 90 `@Test` functions (frontmatter, catalog filter, **catalog sort + body search**, **selection resolve**, platform paths, source detection, bare-home-not-detected, agent engine, session-adapter liveness/id stability, process runner, hooks, startup hook policy, file service incl. **duplicate/copy-to-platform**, **editor metrics**, **toast center**, legacy notch layout/view-model, process exclusions, session dedup, discovery smoke, plus the **preview core**: settings codec/store/seeding, file-type resolution, all six highlighters, CSV→markdown table, markdown splitter, input caps, plist conversion, theme presets, pluginkit-output parse, editor view mode)
 - **UI tests:** `skillzUITests` — launch/performance (slow); skip unless needed
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) — Debug build + `-only-testing:skillzTests` on `macos-26`
 
@@ -97,6 +100,20 @@ Release checklist is inline in `skillz.entitlements` (Developer ID, archive, not
 - **`SkillFileService`** — create/rename/delete/**duplicate**/**copy-to-platform** under platform skill dirs; validates names via **`SkillNameValidator`**. `duplicateSkill`/`copySkill` copy the whole folder (multi-file skills) with `-copy` collision-free naming and rewrite the primary `SKILL.md` `name` frontmatter. Context-menu entries: Duplicate Skill, Copy to Platform (targets = detected platforms minus existing).
 - **`FrontmatterParser` / `FrontmatterWriter`** — YAML frontmatter in `SKILL.md`.
 - **`MarkdownEditorView` / `MarkdownTextView`** — `NSTextView`-backed monospaced editor (native Find bar, undo, line-wrap via `editorLineWrap`); font size from settings. The `updateNSView` text diff guards the SwiftUI⇄AppKit feedback loop — never push `document.text` unconditionally. Footer shows word/char count (`EditorMetrics`) + "Open in Editor".
+- **Source | Rich Text toggle** — `EditorViewModeToggle` (two-segment pill in the editor footer) flips `editorPane` between `MarkdownEditorView` and **`MarkdownRichTextView`** (read-only: frontmatter metadata card + MarkdownUI body themed via the shared `SkillzMarkdownTheme`). Last-used mode persists globally (`AppSettings.editorViewMode` / `editorViewModeRaw`); the "Wrap" checkbox hides in rich mode. Rich mode never mutates `EditorDocument` — autosave/dirty/file-switch guards are untouched.
+
+### Quick Look previews
+
+| Piece | Path / type |
+|-------|-------------|
+| Shared engine | `SkillzPreviewCore/` — `PreviewFileType` (10 types), `PreviewTheme` presets (in-code hex palettes, light+dark per token), `PreviewTypeSettings` (+ forward-compatible codec), `PreviewSettingsStore` (app-group `UserDefaults`), `Highlighters/` (JSON/YAML/TOML/XML-plist/shell/log), `CSVTableConverter` (CSV→markdown table), `PlistRenderer` (binary→XML), `MarkdownDocumentSplitter`, `SkillzMarkdownTheme` (palette→MarkdownUI `Theme`), `PreviewContentView` (the renderer), `PreviewInputLoader` (1.5 MB / 5,000-line caps), `PreviewContentTypeIDs` (UTI source of truth) |
+| Extension | `SkillzQuickLook/PreviewViewController.swift` — `QLPreviewingController` mounting `PreviewContentView` in `NSHostingView`; embedded into `Contents/PlugIns` via the app target's "Embed Foundation Extensions" phase |
+| Settings UI | **Top-bar "Quick Look" button** (next to Refresh, prominent while open) swaps the full window area below the top bar for `QuickLookSettingsPage` (`Views/`): file-type list left, per-type theme preset/font/wrap/line-numbers/pretty-print/markdown-mode strip + large live sample (same `PreviewContentView`) right; header has extension status + "System Settings…" + "Reset Quick Look" via `QuickLookExtensionStatus` (`pluginkit` / `qlmanage -r` through `ShellProcessRunner`) and a Done button (Esc). Catalog-specific trailing top-bar controls (skill actions, Save, search) hide while the page is open. |
+| Shared prefs | `9F2JXY8TCK.group.robertcourson.skillz` group defaults; `SkillzStartupConfigurator` seeds missing per-type blobs on launch (`PreviewSettingsStore.seedMissingDefaults`) |
+
+Covered types: md/markdown, json, jsonl/ndjson, yaml/yml, toml, csv/tsv, log, plist, xml, sh/zsh/bash/fish. The host `Info.plist` imports UTIs for jsonl/ndjson/toml/log/fish; the extension's `QLSupportedContentTypes` is exact-match and must mirror `PreviewContentTypeIDs.swift`. Recent macOS reserves some types for built-in previews (e.g. json/jsonl/toml/csv on macOS 26) — Skillz theming applies wherever third-party previews are allowed (markdown + log everywhere).
+
+Remote images in rendered markdown are **blocked by default** (`MarkdownImageProviders.swift` — local-file-only providers; placeholders otherwise) so previewing untrusted files never touches the network. The per-markdown "Load remote images" setting opts into MarkdownUI's network providers; the extension carries `com.apple.security.network.client` solely for that opt-in. Transformed content is re-capped via `PreviewContentView.renderPlan` (pretty-printed JSON can amplify past the loader caps; CSV truncation folds into the footer flag).
 
 ### Agent monitoring
 
@@ -121,7 +138,7 @@ The `Notch/` folder is retained as dormant legacy code for now, but no app entry
 
 ### Settings tabs
 
-General (appearance, hide built-in Cursor/Codex skills, inspector) · **Sources** (scan paths, rescan) · **Agents** (menu-bar waiting count, hook install status) · Editor (font size).
+General (appearance, hide built-in Cursor/Codex skills, inspector) · **Sources** (scan paths, rescan) · **Agents** (menu-bar waiting count, hook install status) · Editor (font size). Quick Look preview themes live in the main window (top-bar Quick Look page), not in the Settings window.
 
 ## Design system
 
@@ -154,6 +171,10 @@ MCP configs currently scan Cursor `mcp.json`, Claude `.mcp.json`, and Codex `con
 - **Codex icon** — `PlatformIconCodex` is a single `codex.svg`; path arcs must be CoreSVG-safe (minified `a`/`A` commands break rendering in the asset catalog).
 - **Cursor process matching** — `ShellAgentProcessAdapter` excludes the Cursor desktop app and Electron helpers; do not broaden matching or the menu bar will show false positives.
 - **OpenCode compatibility** — source path handling still uses `OpenClawConfig` until the on-disk layout changes; detection also accepts `opencode`/`open-code` and legacy `openclaw`/`open-claw` executables.
+- **SkillzPreviewCore is asset-free** — never reference `Color.skillz*` or other asset-catalog symbols there; the Quick Look target does not compile `Assets.xcassets`, so those symbols don't exist in it. Theme palettes are in-code hex (`PreviewTheme`).
+- **QLSupportedContentTypes is exact-match** — no parent-conformance walk. The UTI lists in `SkillzQuickLook/Info.plist` and the host `UTImportedTypeDeclarations` must stay in sync with `PreviewContentTypeIDs.swift`.
+- **App group sharing** — the app target sets `CODE_SIGN_ENTITLEMENTS = skillz/skillz.entitlements`; without it the non-sandboxed host writes `UserDefaults(suiteName:)` to `~/Library/Preferences` instead of the group container and the extension stops seeing settings. Keep the `$(TeamIdentifierPrefix)` prefix (macOS 15+ prompt avoidance).
+- **System-reserved Quick Look types** — newer macOS keeps json/csv (and on macOS 26 also jsonl/toml) on its built-in previewer; don't chase "extension not used" bugs for those types before checking with `qlmanage -p` on the target OS.
 - **Commits** — only when the user asks.
 - **Third-party icons** — retain `ThirdParty/lobe-icons-LICENSE.txt` when updating Lobe assets.
 

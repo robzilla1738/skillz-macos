@@ -12,6 +12,7 @@ struct MainWindowView: View {
     @State private var showDeleteConfirmation = false
     @State private var showNewSkillSheet = false
     @State private var showOnboarding = false
+    @State private var showQuickLookSettings = false
     @State private var dismissedSaveErrorMessage: String?
 
     private var selectedSkill: SkillItem? {
@@ -35,31 +36,37 @@ struct MainWindowView: View {
         VStack(spacing: 0) {
             topBar
                 .zIndex(1)
-            NavigationSplitView {
-                SidebarView(store: store)
-                    .navigationSplitViewColumnWidth(
-                        min: SkillzWindowMetrics.sidebarMin,
-                        ideal: SkillzWindowMetrics.sidebarIdeal,
-                        max: SkillzWindowMetrics.sidebarMax
-                    )
-                    .toolbar(removing: .sidebarToggle)
-            } content: {
-                ItemListView(store: store)
-                    .navigationSplitViewColumnWidth(
-                        min: SkillzWindowMetrics.listMin,
-                        ideal: SkillzWindowMetrics.listIdeal,
-                        max: SkillzWindowMetrics.listMax
-                    )
-            } detail: {
-                DetailContainerView(store: store, document: document, settings: settings)
-                    .navigationSplitViewColumnWidth(
-                        min: SkillzWindowMetrics.detailMin,
-                        ideal: SkillzWindowMetrics.detailIdeal
-                    )
+            if showQuickLookSettings {
+                QuickLookSettingsPage {
+                    showQuickLookSettings = false
+                }
+            } else {
+                NavigationSplitView {
+                    SidebarView(store: store)
+                        .navigationSplitViewColumnWidth(
+                            min: SkillzWindowMetrics.sidebarMin,
+                            ideal: SkillzWindowMetrics.sidebarIdeal,
+                            max: SkillzWindowMetrics.sidebarMax
+                        )
+                        .toolbar(removing: .sidebarToggle)
+                } content: {
+                    ItemListView(store: store)
+                        .navigationSplitViewColumnWidth(
+                            min: SkillzWindowMetrics.listMin,
+                            ideal: SkillzWindowMetrics.listIdeal,
+                            max: SkillzWindowMetrics.listMax
+                        )
+                } detail: {
+                    DetailContainerView(store: store, document: document, settings: settings)
+                        .navigationSplitViewColumnWidth(
+                            min: SkillzWindowMetrics.detailMin,
+                            ideal: SkillzWindowMetrics.detailIdeal
+                        )
+                }
+                .navigationSplitViewStyle(.balanced)
+                .ignoresSafeArea(.container, edges: .top)
+                .padding(.top, -SkillzWindowMetrics.sidebarTopInsetPull)
             }
-            .navigationSplitViewStyle(.balanced)
-            .ignoresSafeArea(.container, edges: .top)
-            .padding(.top, -SkillzWindowMetrics.sidebarTopInsetPull)
         }
         .frame(
             minWidth: SkillzWindowMetrics.minWidth,
@@ -244,13 +251,21 @@ struct MainWindowView: View {
                     .buttonStyle(SkillzGlassToolbarButtonStyle())
                 }
                 .help("Refresh catalog (⌘R)")
+
+                SkillzGlassToolbarGroup {
+                    Button("Quick Look") {
+                        showQuickLookSettings.toggle()
+                    }
+                    .buttonStyle(SkillzGlassToolbarButtonStyle(prominent: showQuickLookSettings))
+                }
+                .help("Theme Finder Quick Look previews per file type")
             }
             .padding(.leading, toolbarLeadingInset)
 
             Spacer(minLength: SkillzSpacing.xl)
 
             HStack(spacing: SkillzSpacing.md) {
-                if isSkillSelected {
+                if isSkillSelected && !showQuickLookSettings {
                     SkillzGlassToolbarGroup {
                         HStack(spacing: 0) {
                             Button("Details") {
@@ -287,11 +302,13 @@ struct MainWindowView: View {
                     }
                 }
 
-                SkillzGlassSearchField(
-                    text: $store.searchText,
-                    prompt: "Search skills, MCPs, plugins"
-                )
-                .frame(width: 320)
+                if !showQuickLookSettings {
+                    SkillzGlassSearchField(
+                        text: $store.searchText,
+                        prompt: "Search skills, MCPs, plugins"
+                    )
+                    .frame(width: 320)
+                }
             }
         }
         .padding(.trailing, SkillzSpacing.lg)

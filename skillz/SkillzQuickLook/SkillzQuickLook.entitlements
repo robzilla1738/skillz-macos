@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App extensions must be sandboxed; Quick Look hands us read access to
+	     the previewed file. The app group is where the host app publishes
+	     per-type preview settings. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-only</key>
+	<true/>
+	<!-- Outbound network is used only when the user enables the markdown
+	     "Load remote images" preference; previews default to network-free. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>$(TeamIdentifierPrefix)group.robertcourson.skillz</string>
+	</array>
+</dict>
+</plist>

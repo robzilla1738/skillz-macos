@@ -170,11 +170,18 @@ struct SkillDetailView: View {
 
     private var editorPane: some View {
         VStack(spacing: 0) {
-            MarkdownEditorView(
-                document: document,
-                fontSize: settings.editorFontSize,
-                lineWrap: settings.editorLineWrap
-            )
+            if settings.editorViewMode == .rich {
+                MarkdownRichTextView(
+                    text: document.text,
+                    fontSize: settings.editorFontSize
+                )
+            } else {
+                MarkdownEditorView(
+                    document: document,
+                    fontSize: settings.editorFontSize,
+                    lineWrap: settings.editorLineWrap
+                )
+            }
             SkillzHairline()
             editorFooter
         }
@@ -182,16 +189,20 @@ struct SkillDetailView: View {
 
     private var editorFooter: some View {
         HStack(spacing: SkillzSpacing.md) {
+            EditorViewModeToggle(mode: $settings.editorViewMode)
+
             Text("\(EditorMetrics.wordCount(document.text)) words · \(EditorMetrics.characterCount(document.text)) chars")
                 .font(SkillzTypography.caption)
                 .foregroundStyle(Color.skillzMuted)
 
             Spacer()
 
-            Toggle("Wrap", isOn: $settings.editorLineWrap)
-                .toggleStyle(.checkbox)
-                .font(SkillzTypography.caption)
-                .foregroundStyle(Color.skillzMuted)
+            if settings.editorViewMode == .source {
+                Toggle("Wrap", isOn: $settings.editorLineWrap)
+                    .toggleStyle(.checkbox)
+                    .font(SkillzTypography.caption)
+                    .foregroundStyle(Color.skillzMuted)
+            }
 
             Button {
                 store.openInDefaultApp(document.fileURL ?? skill.skillPath)

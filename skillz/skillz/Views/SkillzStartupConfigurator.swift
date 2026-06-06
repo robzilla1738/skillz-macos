@@ -16,6 +16,9 @@ struct SkillzStartupConfigurator: View {
                 didConfigure = true
                 guard !SkillzRuntime.isRunningAppHostedTests else { return }
                 configureAgentMonitoring()
+                // Make sure the Quick Look extension always finds per-type
+                // settings in the shared app group.
+                PreviewSettingsStore().seedMissingDefaults()
             }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
                 guard didConfigure, !SkillzRuntime.isRunningAppHostedTests else { return }

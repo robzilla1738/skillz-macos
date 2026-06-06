@@ -6,12 +6,20 @@
   Release checklist:
   1. Developer ID signing (Automatic with DEVELOPMENT_TEAM)
   2. xcodebuild -scheme skillz -configuration Release archive
-  3. notarytool submit + staple the .app
-  4. Smoke test on a Mac without agent folders, then confirm rescan for supported agent homes and CLIs
+  3. Spot-check Contents/PlugIns/SkillzQuickLook.appex is signed with sandbox +
+     hardened runtime + the team-prefixed app group (codesign -d --entitlements -)
+  4. notarytool submit + staple the .app
+  5. Smoke test on a Mac without agent folders, then confirm rescan for supported agent homes and CLIs
 -->
 <plist version="1.0">
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<false/>
+	<!-- Shared with the sandboxed Quick Look extension; team-prefixed group
+	     ids avoid macOS 15+ access prompts for Developer ID apps. -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>$(TeamIdentifierPrefix)group.robertcourson.skillz</string>
+	</array>
 </dict>
 </plist>

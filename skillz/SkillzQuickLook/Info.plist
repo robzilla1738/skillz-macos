@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleDisplayName</key>
+	<string>Skills Quick Look</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionAttributes</key>
+		<dict>
+			<key>QLIsDataBasedPreview</key>
+			<false/>
+			<key>QLSupportsSearchableItems</key>
+			<false/>
+			<!-- Exact-match list; keep in sync with PreviewContentTypeIDs.swift. -->
+			<key>QLSupportedContentTypes</key>
+			<array>
+				<string>net.daringfireball.markdown</string>
+				<string>public.markdown</string>
+				<string>com.unknown.md</string>
+				<string>org.textbundle.markdown</string>
+				<string>public.json</string>
+				<string>robertcourson.skillz.jsonl</string>
+				<string>robertcourson.skillz.ndjson</string>
+				<string>public.jsonl</string>
+				<string>public.ndjson</string>
+				<string>public.yaml</string>
+				<string>org.yaml.yaml</string>
+				<string>robertcourson.skillz.toml</string>
+				<string>net.toml-lang.toml</string>
+				<string>public.toml</string>
+				<string>public.comma-separated-values-text</string>
+				<string>public.tab-separated-values-text</string>
+				<string>robertcourson.skillz.log</string>
+				<string>com.apple.log</string>
+				<string>public.log</string>
+				<string>com.apple.property-list</string>
+				<string>com.apple.xml-property-list</string>
+				<string>com.apple.binary-property-list</string>
+				<string>public.xml</string>
+				<string>public.shell-script</string>
+				<string>public.bash-script</string>
+				<string>public.zsh-script</string>
+				<string>robertcourson.skillz.fish</string>
+				<string>com.apple.terminal.shell-script</string>
+			</array>
+		</dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.quicklook.preview</string>
+		<key>NSExtensionPrincipalClass</key>
+		<string>$(PRODUCT_MODULE_NAME).PreviewViewController</string>
+	</dict>
+</dict>
+</plist>

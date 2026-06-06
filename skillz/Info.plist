@@ -34,5 +34,103 @@
 	<integer>86400</integer>
 	<key>SUPublicEDKey</key>
 	<string>3LBPx8Uv5L5ptqRqdCWovmUIPLxcDEPnivy8cOpIlH8=</string>
+	<!-- Imported (not exported) so we never claim ownership of types other
+	     apps may declare. Needed because QLSupportedContentTypes matching is
+	     exact: extensions without a system UTI would otherwise resolve to a
+	     dynamic identifier our Quick Look extension can't list.
+	     Keep in sync with PreviewContentTypeIDs.swift. -->
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>robertcourson.skillz.jsonl</string>
+			<key>UTTypeDescription</key>
+			<string>JSON Lines</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>jsonl</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>robertcourson.skillz.ndjson</string>
+			<key>UTTypeDescription</key>
+			<string>Newline-Delimited JSON</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>ndjson</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>robertcourson.skillz.toml</string>
+			<key>UTTypeDescription</key>
+			<string>TOML Configuration</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>toml</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>robertcourson.skillz.log</string>
+			<key>UTTypeDescription</key>
+			<string>Log File</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.plain-text</string>
+				<string>public.data</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>log</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>robertcourson.skillz.fish</string>
+			<key>UTTypeDescription</key>
+			<string>Fish Shell Script</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.shell-script</string>
+				<string>public.plain-text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>fish</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

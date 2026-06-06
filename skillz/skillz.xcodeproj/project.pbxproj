@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		E1B1C0012FDA000000000001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = E1B1C0032FDA000000000001 /* Sparkle */; };
+		E1C2D0012FDB000000000001 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = E1C2D0032FDB000000000001 /* MarkdownUI */; };
+		E1D4F00B2FDD000000000001 /* MarkdownUI in Frameworks */ = {isa = PBXBuildFile; productRef = E1D4F00A2FDD000000000001 /* MarkdownUI */; };
+		E1D4F00C2FDD000000000001 /* SkillzQuickLook.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E1D4F0012FDD000000000001 /* SkillzQuickLook.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,12 +28,34 @@
 			remoteGlobalIDString = E1AAB7812FCA1D4D009EC22C;
 			remoteInfo = skillz;
 		};
+		E1D4F00E2FDD000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E1AAB77A2FCA1D4D009EC22C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E1D4F0032FDD000000000001;
+			remoteInfo = SkillzQuickLook;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E1D4F00D2FDD000000000001 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				E1D4F00C2FDD000000000001 /* SkillzQuickLook.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		E1AAB7822FCA1D4D009EC22C /* Skills.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Skills.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E1AAB7942FCA1D4F009EC22C /* skillzTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = skillzTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E1AAB79E2FCA1D4F009EC22C /* skillzUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = skillzUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E1D4F0012FDD000000000001 /* SkillzQuickLook.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SkillzQuickLook.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -49,6 +74,16 @@
 			path = skillzUITests;
 			sourceTree = "<group>";
 		};
+		E1C3E0012FDC000000000001 /* SkillzPreviewCore */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SkillzPreviewCore;
+			sourceTree = "<group>";
+		};
+		E1D4F0022FDD000000000001 /* SkillzQuickLook */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SkillzQuickLook;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,6 +92,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E1B1C0012FDA000000000001 /* Sparkle in Frameworks */,
+				E1C2D0012FDB000000000001 /* MarkdownUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -74,6 +110,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E1D4F0082FDD000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E1D4F00B2FDD000000000001 /* MarkdownUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -81,6 +125,8 @@
 			isa = PBXGroup;
 			children = (
 				E1AAB7842FCA1D4D009EC22C /* skillz */,
+				E1C3E0012FDC000000000001 /* SkillzPreviewCore */,
+				E1D4F0022FDD000000000001 /* SkillzQuickLook */,
 				E1AAB7972FCA1D4F009EC22C /* skillzTests */,
 				E1AAB7A12FCA1D4F009EC22C /* skillzUITests */,
 				E1AAB7832FCA1D4D009EC22C /* Products */,
@@ -93,6 +139,7 @@
 				E1AAB7822FCA1D4D009EC22C /* Skills.app */,
 				E1AAB7942FCA1D4F009EC22C /* skillzTests.xctest */,
 				E1AAB79E2FCA1D4F009EC22C /* skillzUITests.xctest */,
+				E1D4F0012FDD000000000001 /* SkillzQuickLook.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -107,17 +154,21 @@
 				E1AAB77E2FCA1D4D009EC22C /* Sources */,
 				E1AAB77F2FCA1D4D009EC22C /* Frameworks */,
 				E1AAB7802FCA1D4D009EC22C /* Resources */,
+				E1D4F00D2FDD000000000001 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				E1D4F00F2FDD000000000001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				E1AAB7842FCA1D4D009EC22C /* skillz */,
+				E1C3E0012FDC000000000001 /* SkillzPreviewCore */,
 			);
 			name = skillz;
 			packageProductDependencies = (
 				E1B1C0032FDA000000000001 /* Sparkle */,
+				E1C2D0032FDB000000000001 /* MarkdownUI */,
 			);
 			productName = skillz;
 			productReference = E1AAB7822FCA1D4D009EC22C /* Skills.app */;
@@ -169,6 +220,30 @@
 			productReference = E1AAB79E2FCA1D4F009EC22C /* skillzUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		E1D4F0032FDD000000000001 /* SkillzQuickLook */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E1D4F0042FDD000000000001 /* Build configuration list for PBXNativeTarget "SkillzQuickLook" */;
+			buildPhases = (
+				E1D4F0072FDD000000000001 /* Sources */,
+				E1D4F0082FDD000000000001 /* Frameworks */,
+				E1D4F0092FDD000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				E1C3E0012FDC000000000001 /* SkillzPreviewCore */,
+				E1D4F0022FDD000000000001 /* SkillzQuickLook */,
+			);
+			name = SkillzQuickLook;
+			packageProductDependencies = (
+				E1D4F00A2FDD000000000001 /* MarkdownUI */,
+			);
+			productName = SkillzQuickLook;
+			productReference = E1D4F0012FDD000000000001 /* SkillzQuickLook.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -190,6 +265,9 @@
 						CreatedOnToolsVersion = 26.3;
 						TestTargetID = E1AAB7812FCA1D4D009EC22C;
 					};
+					E1D4F0032FDD000000000001 = {
+						CreatedOnToolsVersion = 26.3;
+					};
 				};
 			};
 			buildConfigurationList = E1AAB77D2FCA1D4D009EC22C /* Build configuration list for PBXProject "skillz" */;
@@ -203,6 +281,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				E1B1C0022FDA000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
+				E1C2D0022FDB000000000001 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E1AAB7832FCA1D4D009EC22C /* Products */;
@@ -212,6 +291,7 @@
 				E1AAB7812FCA1D4D009EC22C /* skillz */,
 				E1AAB7932FCA1D4F009EC22C /* skillzTests */,
 				E1AAB79D2FCA1D4F009EC22C /* skillzUITests */,
+				E1D4F0032FDD000000000001 /* SkillzQuickLook */,
 			);
 		};
 /* End PBXProject section */
@@ -232,6 +312,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		E1AAB79C2FCA1D4F009EC22C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E1D4F0092FDD000000000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -262,6 +349,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E1D4F0072FDD000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -274,6 +368,11 @@
 			isa = PBXTargetDependency;
 			target = E1AAB7812FCA1D4D009EC22C /* skillz */;
 			targetProxy = E1AAB79F2FCA1D4F009EC22C /* PBXContainerItemProxy */;
+		};
+		E1D4F00F2FDD000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E1D4F0032FDD000000000001 /* SkillzQuickLook */;
+			targetProxy = E1D4F00E2FDD000000000001 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -403,23 +502,24 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = skillz/skillz.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = 9F2JXY8TCK;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Skills;
 				INFOPLIST_KEY_CFBundleName = Skills;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = robertcourson.skillz;
 				PRODUCT_MODULE_NAME = skillz;
 				PRODUCT_NAME = Skills;
@@ -438,23 +538,24 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = skillz/skillz.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = 9F2JXY8TCK;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Skills;
 				INFOPLIST_KEY_CFBundleName = Skills;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_FILE = Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = robertcourson.skillz;
 				PRODUCT_MODULE_NAME = skillz;
 				PRODUCT_NAME = Skills;
@@ -473,11 +574,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = 9F2JXY8TCK;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = robertcourson.skillzTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -494,11 +595,11 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = 9F2JXY8TCK;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = robertcourson.skillzTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -514,10 +615,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = 9F2JXY8TCK;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = robertcourson.skillzUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -533,10 +634,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = 9F2JXY8TCK;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0.4;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = robertcourson.skillzUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -545,6 +646,70 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TEST_TARGET_NAME = skillz;
+			};
+			name = Release;
+		};
+		E1D4F0052FDD000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
+				CODE_SIGN_ENTITLEMENTS = SkillzQuickLook/SkillzQuickLook.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = 9F2JXY8TCK;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SkillzQuickLook/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = robertcourson.skillz.quicklook;
+				PRODUCT_MODULE_NAME = SkillzQuickLook;
+				PRODUCT_NAME = SkillzQuickLook;
+				REGISTER_APP_GROUPS = YES;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		E1D4F0062FDD000000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
+				CODE_SIGN_ENTITLEMENTS = SkillzQuickLook/SkillzQuickLook.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 5;
+				DEVELOPMENT_TEAM = 9F2JXY8TCK;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = SkillzQuickLook/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = robertcourson.skillz.quicklook;
+				PRODUCT_MODULE_NAME = SkillzQuickLook;
+				PRODUCT_NAME = SkillzQuickLook;
+				REGISTER_APP_GROUPS = YES;
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -587,6 +752,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		E1D4F0042FDD000000000001 /* Build configuration list for PBXNativeTarget "SkillzQuickLook" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E1D4F0052FDD000000000001 /* Debug */,
+				E1D4F0062FDD000000000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -598,6 +772,14 @@
 				minimumVersion = 2.9.2;
 			};
 		};
+		E1C2D0022FDB000000000001 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/gonzalezreal/swift-markdown-ui";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.4.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -605,6 +787,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = E1B1C0022FDA000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */;
 			productName = Sparkle;
+		};
+		E1C2D0032FDB000000000001 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E1C2D0022FDB000000000001 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
+		};
+		E1D4F00A2FDD000000000001 /* MarkdownUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E1C2D0022FDB000000000001 /* XCRemoteSwiftPackageReference "swift-markdown-ui" */;
+			productName = MarkdownUI;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
